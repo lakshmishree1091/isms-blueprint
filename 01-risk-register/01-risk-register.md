@@ -16,7 +16,7 @@
 
 This register identifies information security risks to Meridiaan, assesses each one, and records how it is being treated. It follows the context, interested parties and scope established in `00-scope-context/`.
 
-Each risk is assessed on two axes — **likelihood** and **impact** — each scored 1 to 5. The two are multiplied to give a **risk score from 1 to 25**, which places the risk in a band. Scores are assigned before deciding treatment (this is the *inherent* risk, judged against controls already in place today).
+Each risk is assessed on two axes - **likelihood** and **impact** - each scored 1 to 5. The two are multiplied to give a **risk score from 1 to 25**, which places the risk in a band. Scores are assigned before deciding treatment (this is the *inherent* risk, judged against controls already in place today).
 
 ## 2. Likelihood scale
 
@@ -54,9 +54,9 @@ Impact is judged on the worst realistic outcome across confidentiality, integrit
 Each risk is assigned one of four responses (ISO/IEC 27001 language):
 
 - **Treat (modify)** — apply or improve controls to reduce likelihood or impact.
-- **Tolerate (accept)** — knowingly accept the risk, with sign-off, where it is already low or treatment is not justified.
-- **Transfer (share)** — shift some impact to another party, e.g. insurance or a contractual clause.
-- **Terminate (avoid)** — stop the activity that creates the risk.
+- **Tolerate (accept)** - knowingly accept the risk, with sign-off, where it is already low or treatment is not justified.
+- **Transfer (share)** - shift some impact to another party, e.g. insurance or a contractual clause.
+- **Terminate (avoid)** - stop the activity that creates the risk.
 
 ## 6. Risk register
 
@@ -85,7 +85,7 @@ Risks are numbered R-01 onward. **L** = likelihood, **I** = impact, **Score** = 
 
 Scoring the risks as they stand today (inherent risk, before further treatment) surfaces a clear pattern: Meridiaan's highest exposure comes from **the ways an attacker gains an initial foothold and then exploits its reach across many clients at once.**
 
-The **Critical** risks (score 16+) are all entry-point risks: **phishing and credential theft (R-07)** and **unpatched systems (R-09)**. These matter most because Meridiaan is a multi-tenant MSP — a single foothold can escalate to privileged access and spread across client environments, so the cheapest attacks carry the widest blast radius. They are the first priorities for treatment.
+The **Critical** risks (score 16+) are all entry-point risks: **phishing and credential theft (R-07)** and **unpatched systems (R-09)**. These matter most because Meridiaan is a multi-tenant MSP - a single foothold can escalate to privileged access and spread across client environments, so the cheapest attacks carry the widest blast radius. They are the first priorities for treatment.
 
 The **High** risks (score 10–15) extend the same theme into consequence: **ransomware (R-06)**, **MSP compromise as a route into clients (R-03)**, **backup/recovery failure (R-05)**, **late incident reporting (R-12)**, **GDPR breach (R-14)**, **tenant segregation failure (R-04)** and **insider misuse (R-10)**. Together these define the resilience and assurance obligations Meridiaan owes its financial clients under DORA and NIS2.
 
