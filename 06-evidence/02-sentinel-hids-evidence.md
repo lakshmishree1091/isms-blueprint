@@ -30,7 +30,8 @@ A host-based intrusion detection system that scans a host every 10 minutes via a
 The most GRC-relevant feature is the **tamper-evident, hash-chained log**. In audit and incident terms, evidence is only trustworthy if it cannot be quietly altered after the fact. By chaining each record to the previous one and self-checking integrity, Sentinel demonstrates the control objective behind A.5.28 (collection of evidence) — not just *that* events are logged, but that the log itself can be *trusted*. This is a governance concept realised in a technical control.
 
 ## 4. How to view the evidence
-The Sentinel HIDS source and technical report live in a separate repository. To make this evidence viewable to a reviewer of this portfolio, the intended artefacts are: the architecture diagram, a sample structured finding (JSON), a screenshot of the monitoring dashboard (severity donut, findings-by-module, timeline), and an extract of the tamper-evident log. These are added to this folder as image/text extracts so they can be seen without access to the source repository.
+## 4. How to view the evidence
+The Sentinel HIDS source and technical report live in a separate repository. To make this evidence viewable to a reviewer of this portfolio, the intended artefacts are: the architecture diagram, a sample structured finding (JSON), and an extract of the tamper-evident log. A visualisation of findings by severity and module can be regenerated locally from the structured findings; an earlier cloud-hosted dashboard is no longer live, so the durable evidence is the structured findings and log extract themselves, which do not depend on any one visualisation tool.
 
 ## 5. Honesty and limitations
 - Sentinel runs on one host; it evidences host-level detection, not network, backup or tenant-segregation controls.
