@@ -80,3 +80,15 @@ Risks are numbered R-01 onward. **L** = likelihood, **I** = impact, **Score** = 
 | R-14 | GDPR breach of personal data → personal data (employee, client-contact, prospect, or client-held) exposed, lost or mishandled → processor and controller duties; large volume of personal data → data-subject harm, GBA/APD notification, fines and reputational damage | 3 | 4 | 12 | High | Treat | Data Protection Officer (DPO) |
 | R-15 | Client concentration → loss of, or a failed audit by, a major financial client → two financial clients are ~25% of revenue → significant revenue loss and reputational harm with financial supervisors; both a commercial and a regulatory risk | 2 | 4 | 8 | Medium | Treat / Tolerate | CEO |
 | R-16 | Climate-driven disruption → extreme heat, flooding, storms or grid disruption affect hosting sites or power → services depend on physical facilities and stable power (ISO 27001 climate determination) → availability loss and higher operating cost; overlaps with R-08 and R-05 | 2 | 3 | 6 | Medium | Treat | Head of Operations |
+
+## 7. Summary of top risks
+
+Scoring the risks as they stand today (inherent risk, before further treatment) surfaces a clear pattern: Meridiaan's highest exposure comes from **the ways an attacker gains an initial foothold and then exploits its reach across many clients at once.**
+
+The **Critical** risks (score 16+) are all entry-point risks: **phishing and credential theft (R-07)** and **unpatched systems (R-09)**. These matter most because Meridiaan is a multi-tenant MSP — a single foothold can escalate to privileged access and spread across client environments, so the cheapest attacks carry the widest blast radius. They are the first priorities for treatment.
+
+The **High** risks (score 10–15) extend the same theme into consequence: **ransomware (R-06)**, **MSP compromise as a route into clients (R-03)**, **backup/recovery failure (R-05)**, **late incident reporting (R-12)**, **GDPR breach (R-14)**, **tenant segregation failure (R-04)** and **insider misuse (R-10)**. Together these define the resilience and assurance obligations Meridiaan owes its financial clients under DORA and NIS2.
+
+The remaining **Medium** risks are monitored and treated where reasonably practicable. No risk is currently accepted without treatment; the client-concentration risk (R-15) is partly a commercial decision for the CEO and is kept under review.
+
+This register is the basis for the Statement of Applicability (`02-iso27001-soa/`) and the gap assessment (`04-gap-assessment/`), where the controls that treat these risks are selected and their current maturity is tested.
