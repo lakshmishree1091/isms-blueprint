@@ -103,6 +103,132 @@
     };
   }
 
+  const DOC_REVIEW_OPTIONS = [
+    { months: 3, label: "Quarterly" },
+    { months: 6, label: "Six-monthly" },
+    { months: 12, label: "Annually" },
+    { months: 24, label: "Every 2 years" }
+  ];
+  const isISODate = v => /^\d{4}-\d{2}-\d{2}$/.test(v || "") && !isNaN(Date.parse(v));
+  const strList = v => Array.isArray(v) ? v.map(String) : [];
+
+  function normaliseDocument(d) {
+    const months = parseInt(d.reviewMonths, 10);
+    return {
+      id: String(d.id || "").trim(),
+      name: String(d.name || "").trim(),
+      purpose: String(d.purpose || "").trim(),
+      type: DOC_TYPES.includes(d.type) ? d.type : "Record",
+      owner: String(d.owner || "").trim(),
+      approver: String(d.approver || "").trim(),
+      version: String(d.version || "").trim(),
+      status: DOC_STATUSES.includes(d.status) ? d.status : "Draft",
+      lastReviewed: isISODate(d.lastReviewed) ? d.lastReviewed : "",
+      firstDue: isISODate(d.firstDue) ? d.firstDue : "",
+      reviewMonths: DOC_REVIEW_OPTIONS.some(o => o.months === months) ? months : 12,
+      reviewNote: String(d.reviewNote || "").trim(),
+      path: String(d.path || "").trim(),
+      rewrite: String(d.rewrite || "").trim(),
+      module: String(d.module || "").trim(),
+      clauses: String(d.clauses || "").trim(),
+      controls: strList(d.controls), controlsNote: String(d.controlsNote || "").trim(),
+      risks: strList(d.risks), risksNote: String(d.risksNote || "").trim(),
+      gaps: strList(d.gaps), gapsNote: String(d.gapsNote || "").trim()
+    };
+  }
+
+  const bool = v => v === true || v === "Yes" || v === "true";
+  const isTimestamp = v => typeof v === "string" && !isNaN(Date.parse(v));
+
+  function normaliseIncident(i) {
+    const obligations = {};
+    REPORTING_OBLIGATIONS.forEach(o => {
+      const done = i.obligations && i.obligations[o.key];
+      if (done && isTimestamp(done.doneAt)) obligations[o.key] = { doneAt: new Date(done.doneAt).toISOString() };
+    });
+    const financialClient = bool(i.financialClient);
+    return {
+      id: String(i.id || "").trim(),
+      title: String(i.title || "").trim(),
+      description: String(i.description || "").trim(),
+      awareAt: isTimestamp(i.awareAt) ? new Date(i.awareAt).toISOString() : new Date().toISOString(),
+      severity: INCIDENT_SEVERITIES.includes(i.severity) ? i.severity : "Medium",
+      significant: bool(i.significant),
+      services: strList(i.services).filter(s => INCIDENT_SERVICES.includes(s)),
+      personalData: bool(i.personalData),
+      financialClient,
+      clients: financialClient ? strList(i.clients).filter(c => FINANCIAL_CLIENTS.includes(c)) : [],
+      status: INCIDENT_STATUSES.includes(i.status) ? i.status : "Open",
+      closedAt: isTimestamp(i.closedAt) ? new Date(i.closedAt).toISOString() : "",
+      risks: strList(i.risks),
+      example: !!i.example,
+      obligations
+    };
+  }
+
+  /* =========================================================
+   * Dates - ISO yyyy-mm-dd strings, compared as whole days (UTC)
+   * ======================================================= */
+
+  const DAY_MS = 86400000;
+  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const isoToUTC = iso => { const [y, m, d] = iso.split("-").map(Number); return Date.UTC(y, m - 1, d); };
+  const utcToISO = ms => new Date(ms).toISOString().slice(0, 10);
+  function todayISO() {
+    const n = new Date();
+    return utcToISO(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate()));
+  }
+  function addMonths(iso, months) {
+    const [y, m, d] = iso.split("-").map(Number);
+    const target = new Date(Date.UTC(y, m - 1 + months, 1));
+    const lastDay = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
+    target.setUTCDate(Math.min(d, lastDay));
+    return utcToISO(target.getTime());
+  }
+  const daysBetween = (fromISO, toISO) => Math.round((isoToUTC(toISO) - isoToUTC(fromISO)) / DAY_MS);
+  function fmtDate(iso) {
+    if (!iso) return "";
+    const [y, m, d] = iso.split("-").map(Number);
+    return `${d} ${MONTHS[m - 1]} ${y}`;
+  }
+  const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+  /* Timestamps (incidents) - stored as ISO UTC, shown in local time */
+  const HOUR_MS = 3600000;
+  const pad2 = n => String(n).padStart(2, "0");
+  function fmtDateTime(iso) {
+    const d = new Date(iso);
+    return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}, ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  }
+  function toLocalInput(iso) {
+    const d = new Date(iso);
+    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  }
+  function addMonthsMs(ms, months) {
+    const d = new Date(ms);
+    const day = d.getDate();
+    d.setDate(1);
+    d.setMonth(d.getMonth() + months);
+    d.setDate(Math.min(day, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()));
+    return d.getTime();
+  }
+  /* 2 d 04 h 10 m · 20 h 39 m 12 s · 39 m 12 s */
+  function fmtDuration(ms) {
+    const s = Math.floor(Math.abs(ms) / 1000);
+    const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60), sec = s % 60;
+    if (d) return `${d} d ${pad2(h)} h ${pad2(m)} m`;
+    if (h) return `${h} h ${pad2(m)} m ${pad2(sec)} s`;
+    return `${m} m ${pad2(sec)} s`;
+  }
+  /* Coarser wording for sentences: "3 h", "2 d 4 h", "25 min" */
+  function fmtSpan(ms) {
+    const mins = Math.round(Math.abs(ms) / 60000);
+    if (mins < 60) return `${mins} min`;
+    const h = Math.floor(mins / 60);
+    if (h < 48) return `${h} h${mins % 60 && h < 10 ? ` ${mins % 60} min` : ""}`;
+    return `${Math.floor(h / 24)} d ${h % 24} h`;
+  }
+
   /* =========================================================
    * Storage - one collection per module, localStorage with fallback
    * ======================================================= */
@@ -192,7 +318,33 @@
   const Risks = createCollection("risks", RISKS, normaliseRisk);
   const Controls = createCollection("controls", CONTROLS, normaliseControl);
   const Gaps = createCollection("gaps", GAPS, normaliseGap);
-  const COLLECTIONS = [Risks, Controls, Gaps];
+  const Documents = createCollection("documents", DOCUMENTS, normaliseDocument);
+  /* Incidents: the worked example is dated relative to the first time this
+   * browser opens Lattice (saved as an anchor), so its clocks are live and
+   * keep running across reloads. Reset restarts it from "now". */
+  const INCIDENT_ANCHOR_KEY = STORAGE_PREFIX + "incidents.anchor";
+  const INCIDENT_SEED = [];
+  function seedIncidents(fresh) {
+    let anchor = 0;
+    if (storage.available) {
+      try {
+        if (fresh) window.localStorage.removeItem(INCIDENT_ANCHOR_KEY);
+        anchor = parseInt(window.localStorage.getItem(INCIDENT_ANCHOR_KEY), 10) || 0;
+        if (!anchor) { anchor = Date.now(); window.localStorage.setItem(INCIDENT_ANCHOR_KEY, String(anchor)); }
+      } catch (e) { anchor = 0; }
+    }
+    if (!anchor) anchor = Date.now();
+    INCIDENT_SEED.splice(0, INCIDENT_SEED.length, ...INCIDENTS.map(i => {
+      const { awareMinutesAgo, ...rest } = i;
+      return { ...rest, awareAt: rest.awareAt || new Date(anchor - (awareMinutesAgo || 0) * 60000).toISOString() };
+    }));
+  }
+  seedIncidents(false);
+  const Incidents = createCollection("incidents", INCIDENT_SEED, normaliseIncident);
+  const resetIncidents = Incidents.reset.bind(Incidents);
+  Incidents.reset = function () { seedIncidents(true); resetIncidents(); };
+
+  const COLLECTIONS = [Risks, Controls, Gaps, Documents, Incidents];
 
   Risks.nextId = function () {
     const max = this.items.reduce((m, r) => Math.max(m, idNum(r.id)), 0);
@@ -202,6 +354,8 @@
   const uniqSorted = arr => Array.from(new Set(arr.filter(Boolean))).sort((a, b) => a.localeCompare(b));
   Risks.owners = function () { return uniqSorted(this.items.map(r => r.owner)); };
   Gaps.owners = function () { return uniqSorted(this.items.map(g => g.owner)); };
+  Documents.owners = function () { return uniqSorted(this.items.map(d => d.owner)); };
+  const allPeople = () => uniqSorted([...Risks.owners(), ...Gaps.owners(), ...Documents.owners(), ...Documents.items.map(d => d.approver)]);
 
   function updateBanner() {
     const el = $("#storage-banner");
@@ -353,6 +507,49 @@
       `<span class="dot ${statusClass(c.status)}"></span>${esc(id)}</a>`;
   }
 
+  function gapLinkHTML(id) {
+    const g = Gaps.find(id);
+    if (!g) return `<span class="ref-link missing">${esc(id)}</span>`;
+    return `<a class="ref-link" href="#/gaps?focus=${encodeURIComponent(id)}" title="${esc(`${g.id} · ${g.theme} · ${g.status}`)}">${prioHTML(g.priority)} ${esc(g.id)} ${esc(g.theme)}</a>`;
+  }
+  function docLinkHTML(d) {
+    const rv = docReview(d);
+    const flag = rv.state === "Current" ? "" : `<span class="dot rv-${rv.cls}"></span>`;
+    return `<a class="ref-link" href="#/documents?focus=${encodeURIComponent(d.id)}" title="${esc(`${d.name} · ${rv.text}`)}">${flag}${esc(d.name)}</a>`;
+  }
+
+  function docsFor(pred) {
+    const list = Documents.items.filter(pred);
+    return list.length ? list.map(docLinkHTML).join("") : '<span class="muted">No document references this.</span>';
+  }
+
+  /* Documents review status: Overdue / Due soon (within 60 days) / Current */
+  const DUE_SOON_DAYS = 60;
+  const REVIEW_STATES = ["Overdue", "Due soon", "Current"];
+
+  function docDueDate(d) {
+    return d.lastReviewed ? addMonths(d.lastReviewed, d.reviewMonths) : d.firstDue;
+  }
+  function docReview(d) {
+    const due = docDueDate(d);
+    if (!due) return { state: "Overdue", cls: "overdue", due: "", days: -Infinity, text: "No review date set" };
+    const days = daysBetween(todayISO(), due);
+    if (days < 0) return { state: "Overdue", cls: "overdue", due, days, text: `Overdue by ${plural(-days, "day")}` };
+    if (days <= DUE_SOON_DAYS) return { state: "Due soon", cls: "due-soon", due, days, text: days === 0 ? "Due today" : `Due in ${plural(days, "day")}` };
+    return { state: "Current", cls: "current", due, days, text: "Current" };
+  }
+
+  const ICON_WARN = '<svg class="rv-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5 18.5 17h-17z"/><path d="M10 8v4.2M10 14.6v.4"/></svg>';
+  const ICON_CLOCK = '<svg class="rv-icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.5"/><path d="M10 6v4.5l3 2"/></svg>';
+
+  function reviewStatusHTML(rv) {
+    if (rv.state === "Overdue") {
+      return `<span class="rv overdue">${ICON_WARN}Overdue</span><span class="rv-days">${rv.due ? esc(plural(-rv.days, "day")) + " overdue" : "No review date"}</span>`;
+    }
+    if (rv.state === "Due soon") return `<span class="rv due-soon">${ICON_CLOCK}${esc(rv.text)}</span>`;
+    return `<span class="rv current">Current</span>`;
+  }
+
   /* Gap progress = share of the gap's applicable key controls that are Implemented */
   function gapProgress(g) {
     const ctrls = g.controls.map(id => Controls.find(id)).filter(c => c && c.applicable === "Yes");
@@ -372,9 +569,7 @@
    * ======================================================= */
 
   const PLACEHOLDERS = {
-    documents: { title: "Documents", text: "Manage the ISMS document set — policies, scope, SoA and procedures — with owners, versions and review dates.", icon: '<path d="M7 3h9l5 5v13H7zM16 3v5h5M10 13h8M10 17h8"/>' },
     evidence:  { title: "Evidence", text: "Link evidence records to controls and audit clauses, and see where evidence is missing or out of date.", icon: '<path d="M5 5h16v16H5zM9 3v4M17 3v4M9 14l3 3 5-5"/>' },
-    incidents: { title: "Incidents", text: "Log incidents and track NIS2 and DORA reporting deadlines (early warning, notification, final report).", icon: '<path d="M13 3v3M13 20v3M3 13h3M20 13h3M13 8a5 5 0 1 1 0 10 5 5 0 0 1 0-10z"/>' },
     assurance: { title: "Client Assurance", text: "Prepare assurance packs and track audit requests from the financial-sector clients under their DORA obligations.", icon: '<path d="M4 22V11l9-7 9 7v11zM10 22v-6h6v6"/>' }
   };
 
@@ -382,7 +577,9 @@
     dashboard: { title: "Dashboard",       render: (v) => renderDashboard(v) },
     risks:     { title: "Risk Register",   render: (v, p) => renderRisks(v, p) },
     controls:  { title: "Control Library", render: (v, p) => renderControls(v, p) },
-    gaps:      { title: "Gaps",            render: (v, p) => renderGaps(v, p) }
+    gaps:      { title: "Gaps",            render: (v, p) => renderGaps(v, p) },
+    documents: { title: "Documents",       render: (v, p) => renderDocuments(v, p) },
+    incidents: { title: "Incidents",       render: (v, p) => renderIncidents(v, p) }
   };
 
   function currentRoute() {
@@ -408,6 +605,22 @@
 
     document.title = ((VIEWS[route] || PLACEHOLDERS[route] || {}).title || "Lattice") + " · Lattice";
     updateBanner();
+    updateNavCounts();
+  }
+
+  /* Flag by exception in the sidebar: overdue document reviews and reports */
+  function setNavCount(sel, n, title) {
+    const el = $(sel);
+    if (!el) return;
+    el.textContent = n;
+    el.hidden = !n;
+    el.title = title;
+  }
+  function updateNavCounts() {
+    const docs = Documents.items.filter(d => docReview(d).state === "Overdue").length;
+    setNavCount("#nav-doc-count", docs, `${plural(docs, "document")} overdue for review`);
+    const reports = overdueObligationCount();
+    setNavCount("#nav-inc-count", reports, `${plural(reports, "reporting obligation")} overdue`);
   }
 
   /* =========================================================
@@ -1075,9 +1288,11 @@
     f.justification.value = c.justification;
 
     const usedBy = Gaps.items.filter(g => g.controls.includes(c.id));
-    $("#control-gaps").innerHTML = usedBy.length
-      ? `<span class="label">Key control in</span> ${usedBy.map(g => `<a class="ref-link" href="#/gaps?focus=${encodeURIComponent(g.id)}">${prioHTML(g.priority)} ${esc(g.id)} ${esc(g.theme)}</a>`).join(" ")}`
-      : `<span class="label">Key control in</span> <span class="muted">No gap references this control.</span>`;
+    $("#control-gaps").innerHTML = `
+      <div><span class="label">Key control in</span> ${usedBy.length
+        ? `<span class="ref-links">${usedBy.map(g => gapLinkHTML(g.id)).join("")}</span>`
+        : `<span class="muted">No gap references this control.</span>`}</div>
+      <div><span class="label">Documents</span> <span class="ref-links">${docsFor(d => d.controls.includes(c.id))}</span></div>`;
     $$("#control-gaps a", ctlDialog.el).forEach(a => a.addEventListener("click", () => ctlDialog.el.close()));
 
     tooltip.hide();
@@ -1309,6 +1524,7 @@
     $("#gap-refs").innerHTML = `
       <div><span class="label">Key controls</span> <span class="ref-links">${g.controls.map(controlLinkHTML).join("")}</span></div>
       <div><span class="label">Risks left open</span> <span class="ref-links">${g.risks.length ? g.risks.map(riskLinkHTML).join("") : `<span class="muted">${esc(g.risksNote || "—")}</span>`}</span></div>
+      <div><span class="label">Documents</span> <span class="ref-links">${docsFor(d => d.gaps.includes(g.id))}</span></div>
       <div><span class="label">Progress</span> ${p.Implemented} of ${p.total} key controls implemented (${p.pct}%). Update control status in the Control Library.</div>`;
     $$("#gap-refs a", gapDialog.el).forEach(a => a.addEventListener("click", () => gapDialog.el.close()));
 
@@ -1330,6 +1546,908 @@
     gapDialog.el.close();
     render();
     toast(savedMsg(ok, `${g.id} updated`));
+  }
+
+  /* =========================================================
+   * Documents
+   * ======================================================= */
+
+  const docState = {
+    sort: { key: "review", dir: "asc" },   // most overdue first
+    type: "", owner: "", review: "", status: "", q: "", focus: null
+  };
+
+  const DOC_COLUMNS = [
+    { key: "name",         label: "Document" },
+    { key: "type",         label: "Type" },
+    { key: "owner",        label: "Owner" },
+    { key: "approver",     label: "Approver" },
+    { key: "version",      label: "Version" },
+    { key: "status",       label: "Status" },
+    { key: "lastReviewed", label: "Reviewed" },
+    { key: "reviewMonths", label: "Frequency" },
+    { key: "due",          label: "Next due" },
+    { key: "review",       label: "Review status" }
+  ];
+
+  const freqLabel = m => (DOC_REVIEW_OPTIONS.find(o => o.months === m) || {}).label || `Every ${m} months`;
+  const notApproved = d => d.status !== "Approved";
+
+  function compareDocs(a, b, key) {
+    switch (key) {
+      case "review": case "due": {
+        const da = docReview(a).days, db = docReview(b).days;
+        return da === db ? 0 : da < db ? -1 : 1;
+      }
+      case "type": return DOC_TYPES.indexOf(a.type) - DOC_TYPES.indexOf(b.type);
+      case "status": return DOC_STATUSES.indexOf(a.status) - DOC_STATUSES.indexOf(b.status);
+      case "reviewMonths": return a.reviewMonths - b.reviewMonths;
+      case "version": return (parseFloat(a.version) || 0) - (parseFloat(b.version) || 0);
+      case "lastReviewed": return (a.lastReviewed || "0").localeCompare(b.lastReviewed || "0");
+      default: return String(a[key]).localeCompare(String(b[key]));
+    }
+  }
+
+  function filteredDocs() {
+    const q = docState.q.trim().toLowerCase();
+    const { key, dir } = docState.sort;
+    return Documents.items
+      .filter(d => !docState.type || d.type === docState.type)
+      .filter(d => !docState.owner || d.owner === docState.owner)
+      .filter(d => !docState.review || docReview(d).state === docState.review)
+      .filter(d => !docState.status || (docState.status === "!Approved" ? notApproved(d) : d.status === docState.status))
+      .filter(d => !q || [d.id, d.name, d.purpose, d.type, d.owner, d.approver, d.status, d.path].join(" ").toLowerCase().includes(q))
+      .sort((a, b) => {
+        const c = compareDocs(a, b, key);
+        return (dir === "asc" ? c : -c) || idNum(a.id) - idNum(b.id);
+      });
+  }
+
+  /* Summary strip: exceptions first; each item is also a one-click filter */
+  function docSummary() {
+    const all = Documents.items;
+    const by = s => all.filter(d => docReview(d).state === s).length;
+    const overdue = by("Overdue"), soon = by("Due soon");
+    const policies = all.filter(d => d.type === "Policy").length;
+    return [
+      { label: "Overdue", n: overdue, note: overdue ? "Review and re-approve now" : "Nothing overdue", cls: overdue ? "alert" : "", icon: overdue ? ICON_WARN : "", filter: { review: "Overdue", status: "" } },
+      { label: "Due soon", n: soon, note: `Due within ${DUE_SOON_DAYS} days`, cls: soon ? "warn" : "", icon: soon ? ICON_CLOCK : "", filter: { review: "Due soon", status: "" } },
+      { label: "Current", n: by("Current"), note: "No action needed", filter: { review: "Current", status: "" } },
+      { label: "Not yet approved", n: all.filter(notApproved).length, note: "Draft or not started", filter: { review: "", status: "!Approved" } },
+      { label: "All documents", n: all.length, note: `${policies} policies · ${all.length - policies} other`, filter: { review: "", status: "" } }
+    ];
+  }
+
+  function renderDocuments(view, params) {
+    if (params.has("focus")) {
+      docState.type = ""; docState.owner = ""; docState.review = ""; docState.status = ""; docState.q = "";
+      docState.focus = params.get("focus");
+      history.replaceState(null, "", "#/documents");
+    }
+    const owners = Documents.owners();
+    if (docState.owner && !owners.includes(docState.owner)) docState.owner = "";
+
+    view.innerHTML = `
+      <div class="page-head">
+        <div>
+          <h1>Documents</h1>
+          <div class="sub">ISMS documented information · ISO/IEC 27001 clause 7.5 · review status as at ${esc(fmtDate(todayISO()))}</div>
+        </div>
+        <div class="page-actions">
+          ${resetButtonHTML(Documents)}
+        </div>
+      </div>
+
+      <section class="card summary-strip docs" id="doc-summary" aria-label="Document review summary"></section>
+
+      <section class="card">
+        <div class="toolbar">
+          <input type="search" class="input search" id="f-q" placeholder="Search documents" aria-label="Search documents" value="${esc(docState.q)}">
+          <label class="control">Type
+            <select class="select" id="f-type">
+              <option value="">All types</option>
+              ${DOC_TYPES.map(t => `<option ${docState.type === t ? "selected" : ""}>${t}</option>`).join("")}
+            </select>
+          </label>
+          <label class="control">Owner
+            <select class="select" id="f-owner">
+              <option value="">All owners</option>
+              ${owners.map(o => `<option ${docState.owner === o ? "selected" : ""}>${esc(o)}</option>`).join("")}
+            </select>
+          </label>
+          <label class="control">Review
+            <select class="select" id="f-review">
+              <option value="">All review states</option>
+              ${REVIEW_STATES.map(s => `<option ${docState.review === s ? "selected" : ""}>${s}</option>`).join("")}
+            </select>
+          </label>
+          <label class="control">Status
+            <select class="select" id="f-status">
+              <option value="">All statuses</option>
+              ${DOC_STATUSES.map(s => `<option ${docState.status === s ? "selected" : ""}>${s}</option>`).join("")}
+              <option value="!Approved" ${docState.status === "!Approved" ? "selected" : ""}>Not yet approved</option>
+            </select>
+          </label>
+          <span class="spacer"></span>
+          <span class="result-count" id="f-count" aria-live="polite"></span>
+        </div>
+        <div class="table-wrap">
+          <table class="data" id="doc-table">
+            <thead><tr>${headerHTML(DOC_COLUMNS)}</tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="table-foot">
+          <span>Next review due = last reviewed + review frequency. Due soon = within ${DUE_SOON_DAYS} days. Click a document for its controls, risks, gaps and next step.</span>
+          <span>Source: document headers in 00–07 · older versions and records outside the repo are illustrative</span>
+        </div>
+      </section>
+    `;
+
+    const bindSelect = (sel, field) => $(sel).addEventListener("change", e => { docState[field] = e.target.value; drawDocuments(); });
+    $("#f-q").addEventListener("input", e => { docState.q = e.target.value; drawDocuments(); });
+    bindSelect("#f-type", "type");
+    bindSelect("#f-owner", "owner");
+    bindSelect("#f-review", "review");
+    bindSelect("#f-status", "status");
+    bindSort($("#doc-table"), docState, [], drawDocuments);
+    bindReset(Documents, "document register");
+
+    drawDocuments();
+
+    if (docState.focus) {
+      const id = docState.focus;
+      docState.focus = null;
+      if (!focusRow($("#doc-table tbody"), id)) toast(`${id} is not in the document register`);
+    }
+  }
+
+  function docRowHTML(d) {
+    const rv = docReview(d);
+    return `
+      <tr tabindex="0" data-id="${esc(d.id)}" class="rv-row-${rv.cls}" aria-label="Open ${esc(d.name)}: ${esc(rv.text)}">
+        <td class="desc doc-desc">
+          <div class="risk-title">${esc(d.name)}</div>
+          <div class="risk-desc" title="${esc(d.purpose)}">${esc(d.purpose)}</div>
+        </td>
+        <td>${esc(d.type)}</td>
+        <td class="owner">${esc(d.owner)}</td>
+        <td class="owner">${d.approver ? esc(d.approver) : '<span class="muted">Not assigned</span>'}</td>
+        <td class="mono-cell">${d.version ? esc(d.version) : '<span class="muted">—</span>'}</td>
+        <td class="nowrap doc-status ${d.status === "Approved" ? "" : "unapproved"}">${esc(d.status)}${d.rewrite ? '<span class="lvl">Rewrite drafted</span>' : ""}</td>
+        <td class="nowrap">${d.lastReviewed ? esc(fmtDate(d.lastReviewed)) : '<span class="muted">Never</span>'}</td>
+        <td class="nowrap">${esc(freqLabel(d.reviewMonths))}</td>
+        <td class="nowrap due-cell ${rv.cls}">${rv.due ? esc(fmtDate(rv.due)) : "—"}${d.lastReviewed ? "" : '<span class="lvl">First issue</span>'}</td>
+        <td class="nowrap rv-cell">${reviewStatusHTML(rv)}</td>
+      </tr>`;
+  }
+
+  function drawDocuments() {
+    const table = $("#doc-table");
+    if (!table) return;
+    const rows = filteredDocs();
+    const tbody = $("tbody", table);
+    paintSort(table, docState);
+
+    const strip = $("#doc-summary");
+    strip.innerHTML = docSummary().map(s => {
+      const active = docState.review === s.filter.review && docState.status === s.filter.status;
+      return `<button type="button" class="sum-item ${s.cls || ""}" aria-pressed="${active}" data-review="${esc(s.filter.review)}" data-status="${esc(s.filter.status)}">
+          <span class="sum-label">${s.icon || ""}${esc(s.label)}</span>
+          <span class="sum-value">${s.n}</span>
+          <span class="sum-note">${esc(s.note)}</span>
+        </button>`;
+    }).join("");
+    $$(".sum-item", strip).forEach(b => b.addEventListener("click", () => {
+      docState.review = b.dataset.review;
+      docState.status = b.dataset.status;
+      $("#f-review").value = docState.review;
+      $("#f-status").value = docState.status;
+      drawDocuments();
+    }));
+
+    tbody.innerHTML = rows.length ? rows.map(docRowHTML).join("")
+      : `<tr><td colspan="${DOC_COLUMNS.length}"><div class="empty-state">No documents match these filters.</div></td></tr>`;
+
+    bindRows(tbody, openDocDialog);
+    $("#f-count").textContent = `Showing ${rows.length} of ${Documents.items.length} documents`;
+  }
+
+  /* ---------- Document detail panel ---------- */
+
+  const docDialog = { el: null, form: null, editingId: null };
+
+  function setupDocDialog() {
+    docDialog.el = $("#doc-dialog");
+    docDialog.form = $("#doc-form");
+    const f = docDialog.form;
+    f.status.innerHTML = DOC_STATUSES.map(s => `<option>${esc(s)}</option>`).join("");
+    f.reviewMonths.innerHTML = DOC_REVIEW_OPTIONS.map(o => `<option value="${o.months}">${esc(o.label)}</option>`).join("");
+    setupDialogChrome(docDialog.el);
+    ["lastReviewed", "reviewMonths", "firstDue"].forEach(k => f[k].addEventListener("input", updateDocDuePreview));
+    f.reviewMonths.addEventListener("change", updateDocDuePreview);
+    f.addEventListener("submit", e => { e.preventDefault(); saveDocDialog(); });
+    $("#doc-reviewed").addEventListener("click", () => {
+      f.lastReviewed.value = todayISO();
+      saveDocDialog(`review recorded ${fmtDate(todayISO())}`);
+    });
+  }
+
+  /* Values in the form, as a document record (used for the live preview and save) */
+  function docFromForm(base) {
+    const f = docDialog.form;
+    return normaliseDocument({
+      ...base,
+      owner: f.owner.value, approver: f.approver.value, version: f.version.value,
+      status: f.status.value, lastReviewed: f.lastReviewed.value,
+      reviewMonths: f.reviewMonths.value, firstDue: f.firstDue.value
+    });
+  }
+
+  function updateDocDuePreview() {
+    const base = Documents.find(docDialog.editingId);
+    if (!base) return;
+    const f = docDialog.form;
+    $("#doc-first-due").hidden = !!f.lastReviewed.value;
+    const d = docFromForm(base);
+    const rv = docReview(d);
+    $("#doc-due-preview").innerHTML = rv.due
+      ? `Next review due <b>${esc(fmtDate(rv.due))}</b> · ${reviewStatusHTML(rv)}`
+      : `<span class="muted">Set a last-reviewed date or a first-issue due date.</span>`;
+  }
+
+  /* The "what to do next" callout: every document leads somewhere */
+  function docNextStepHTML(d) {
+    const rv = docReview(d);
+    const approver = d.approver || "an approver (none assigned yet)";
+    const due = rv.due ? fmtDate(rv.due) : "";
+    const fileLink = d.path ? ` (<a href="../${esc(d.path)}" target="_blank" rel="noopener">${esc(d.path.split("/").pop())}</a>)` : "";
+    let kind, title, body;
+
+    if (d.status === "Not started") {
+      kind = rv.state === "Current" ? "info" : rv.cls;
+      title = `Produce the first version — owner: ${esc(d.owner)}`;
+      body = `This document does not exist yet. The first issue is due ${esc(due)}${rv.state === "Overdue" ? `, ${plural(-rv.days, "day")} ago` : ""}. Once it is drafted, ${esc(approver)} approves it.`;
+    } else if (rv.state === "Overdue") {
+      kind = "overdue";
+      title = `Review and re-approve — owner: ${esc(d.owner)}`;
+      body = `The review was due ${esc(due)}, ${plural(-rv.days, "day")} ago, so this version can no longer be shown to an auditor as current. ` +
+        (d.rewrite
+          ? `A ${esc(d.rewrite)} already exists${fileLink}. Finish it and take it to ${esc(approver)} for approval, rather than re-approving the old version.`
+          : `${esc(d.owner)} reviews it and ${esc(approver)} re-approves it. Then use <b>Mark reviewed today</b>.`);
+    } else if (rv.state === "Due soon") {
+      kind = "due-soon";
+      title = `Schedule the review — owner: ${esc(d.owner)}`;
+      body = `The review is due ${esc(due)} (in ${plural(rv.days, "day")}). Book time with ${esc(approver)} for sign-off before then.` +
+        (d.rewrite ? ` A ${esc(d.rewrite)} is ready to review${fileLink}.` : "");
+    } else if (!d.approver) {
+      kind = "info";
+      title = "Assign an approver";
+      body = `No approver is named in this document's header, so it cannot be formally approved. Name one below, then send version ${esc(d.version || "—")} for approval.`;
+    } else if (d.status === "Draft") {
+      kind = "info";
+      title = `Approve the draft — approver: ${esc(d.approver)}`;
+      body = `Version ${esc(d.version)} is still a draft, so it does not yet count as approved documented information. ${esc(d.owner)} submits it to ${esc(d.approver)}. Next review due ${esc(due)}.`;
+    } else {
+      kind = "quiet";
+      title = "No action needed";
+      body = `Approved and in date. Next review due ${esc(due)} (in ${plural(rv.days, "day")}).`;
+    }
+    const icon = kind === "overdue" ? ICON_WARN : kind === "due-soon" ? ICON_CLOCK : "";
+    return `<div class="next-step ${kind}"><div class="next-title">${icon}${title}</div><p>${body}</p></div>`;
+  }
+
+  function docRefsHTML(d) {
+    const moduleNames = { risks: "Risk Register", controls: "Control Library", gaps: "Gaps", incidents: "Incidents" };
+    const row = (label, content) => `<div><span class="label">${label}</span> <span class="ref-links">${content}</span></div>`;
+    const note = t => `<span class="muted">${esc(t || "None recorded")}</span>`;
+    const parts = [];
+    parts.push(row("Supports controls", d.controls.length ? d.controls.map(controlLinkHTML).join("") : note(d.controlsNote || (d.clauses ? "Management-system clause, no Annex A control" : ""))));
+    if (d.clauses) parts.push(row("ISO clauses", `<span>${esc(d.clauses)}</span>`));
+    parts.push(row("Helps treat risks", d.risks.length ? d.risks.map(riskLinkHTML).join("") : note(d.risksNote)));
+    parts.push(row("Gaps that depend on it", d.gaps.length ? d.gaps.map(gapLinkHTML).join("") : note(d.gapsNote)));
+    parts.push(row("Source document",
+      (d.path ? `<a class="ref-link mono" href="../${esc(d.path)}" target="_blank" rel="noopener" title="Open the markdown file">${esc(d.path)} ↗</a>`
+        : note("Kept outside this repository (illustrative record)")) +
+      (d.module ? ` <a class="ref-link" href="#/${esc(d.module)}">Open ${esc(moduleNames[d.module] || d.module)} in Lattice</a>` : "")));
+    return parts.join("");
+  }
+
+  function openDocDialog(id) {
+    const d = Documents.find(id);
+    if (!d) return;
+    const f = docDialog.form;
+    docDialog.editingId = d.id;
+
+    f.reset();
+    clearErrors(f);
+    $("#doc-dialog-title").textContent = d.name;
+    $("#doc-dialog-sub").textContent = `${d.id} · ${d.type} · review rule: ${d.reviewNote || freqLabel(d.reviewMonths)}`;
+    $("#doc-next").innerHTML = docNextStepHTML(d);
+    $("#doc-purpose").textContent = d.purpose;
+    $("#doc-refs").innerHTML = docRefsHTML(d);
+
+    f.owner.value = d.owner;
+    f.approver.value = d.approver;
+    f.version.value = d.version;
+    f.status.value = d.status;
+    f.lastReviewed.value = d.lastReviewed;
+    f.lastReviewed.max = todayISO();
+    f.reviewMonths.value = String(d.reviewMonths);
+    f.firstDue.value = d.firstDue;
+    $("#doc-reviewed").hidden = d.status === "Not started";
+    $("#doc-people").innerHTML = allPeople().map(o => `<option value="${esc(o)}">`).join("");
+    updateDocDuePreview();
+
+    // In-app links close the panel; the markdown file opens in a new tab
+    $$("#doc-dialog a:not([target])", docDialog.el).forEach(a => a.addEventListener("click", () => docDialog.el.close()));
+
+    tooltip.hide();
+    docDialog.el.showModal();
+    $("#doc-next").scrollIntoView({ block: "nearest" });
+    f.owner.focus({ preventScroll: true });
+  }
+
+  function saveDocDialog(action) {
+    const f = docDialog.form;
+    const d = Documents.find(docDialog.editingId);
+    if (!d) return;
+    const data = docFromForm(d);
+    const today = todayISO();
+    const errors = {};
+    if (!data.owner) errors.owner = "Assign an owner.";
+    if (data.status !== "Not started" && !data.version) errors.version = "Give the version.";
+    if (f.lastReviewed.value && !data.lastReviewed) errors.lastReviewed = "Enter a valid date.";
+    else if (data.lastReviewed && data.lastReviewed > today) errors.lastReviewed = "A review date cannot be in the future.";
+    else if (!data.lastReviewed && data.status !== "Not started") errors.lastReviewed = "Enter the date it was last reviewed.";
+    else if (!data.lastReviewed && !data.firstDue) errors.firstDue = "Set when the first version is due.";
+    if (!showErrors(f, errors, ["owner", "version", "lastReviewed", "firstDue"])) return;
+
+    const ok = Documents.upsert(data, d.id);
+    docDialog.el.close();
+    render();
+    toast(savedMsg(ok, `${d.name}: ${action || "updated"}`));
+  }
+
+  /* =========================================================
+   * Incidents - register and regulatory reporting clocks
+   * ======================================================= */
+
+  const CLOCK_STATES = ["Overdue", "Due soon", "Upcoming", "Completed", "Not triggered"];
+  const clockCls = s => s.replace(/\s+/g, "-").toLowerCase();
+  const TRIGGER_TEXT = {
+    significant: { on: "Significant incident under NIS2", off: "Not a significant incident under NIS2" },
+    personalData: { on: "Personal data involved", off: "No personal data involved" },
+    financialClient: { on: "Financial client affected", off: "No financial client affected" }
+  };
+
+  function clockState(deadline, dueSoonHours, now) {
+    if (now > deadline) return "Overdue";
+    if (deadline - now <= dueSoonHours * HOUR_MS) return "Due soon";
+    return "Upcoming";
+  }
+
+  /* Every reporting obligation for an incident, triggered or not */
+  function incidentClocks(inc, now = Date.now()) {
+    const aware = Date.parse(inc.awareAt);
+    const clocks = {};
+    REPORTING_OBLIGATIONS.forEach(def => {
+      const triggered = !!inc[def.trigger];
+      let base = aware, provisional = false;
+      if (def.from !== "awareness") {
+        const prior = clocks[def.from];
+        if (prior && prior.doneAt) base = Date.parse(prior.doneAt);
+        else { base = prior ? prior.deadline : aware; provisional = true; }
+      }
+      const deadline = def.months ? addMonthsMs(base, def.months) : base + def.hours * HOUR_MS;
+      const doneAt = (inc.obligations[def.key] || {}).doneAt || "";
+      const state = !triggered ? "Not triggered" : doneAt ? "Completed" : clockState(deadline, def.dueSoonHours, now);
+      clocks[def.key] = { def, triggered, deadline, provisional, doneAt, state, cls: clockCls(state) };
+    });
+    return REPORTING_OBLIGATIONS.map(d => clocks[d.key]);
+  }
+
+  /* Register-level roll-up: counts per state and the next open deadline */
+  function incidentSummary(inc, now = Date.now()) {
+    const clocks = incidentClocks(inc, now);
+    const live = clocks.filter(c => c.triggered);
+    const count = s => live.filter(c => c.state === s).length;
+    const open = live.filter(c => !c.doneAt).sort((a, b) => a.deadline - b.deadline);
+    const worst = CLOCK_STATES.find(s => count(s) > 0) || "Not triggered";
+    return { clocks, live, count, next: open[0] || null, worst, worstRank: CLOCK_STATES.indexOf(worst) };
+  }
+
+  function overdueObligationCount() {
+    const now = Date.now();
+    return Incidents.items.reduce((n, inc) => n + incidentClocks(inc, now).filter(c => c.state === "Overdue").length, 0);
+  }
+
+  const CLOCK_ICON = { Overdue: ICON_WARN, "Due soon": ICON_CLOCK };
+  function clockStateHTML(state) {
+    return `<span class="clock-state ${clockCls(state)}">${CLOCK_ICON[state] || ""}${esc(state)}</span>`;
+  }
+  /* Live countdown: the 1-second ticker rewrites every [data-deadline] */
+  function countdownHTML(c, extraCls = "") {
+    const now = Date.now();
+    const text = now > c.deadline ? `Overdue by ${fmtDuration(now - c.deadline)}` : `${fmtDuration(c.deadline - now)} left`;
+    return `<span class="countdown ${extraCls}" data-deadline="${c.deadline}" data-soon="${c.def.dueSoonHours}" data-state="${esc(c.state)}">${text}</span>`;
+  }
+
+  const incState = {
+    sort: { key: "next", dir: "asc" },
+    status: "", clock: "", q: "", selected: null, focus: null
+  };
+
+  const INC_COLUMNS = [
+    { key: "id",        label: "ID" },
+    { key: "title",     label: "Incident" },
+    { key: "awareAt",   label: "Aware" },
+    { key: "severity",  label: "Severity" },
+    { key: "triggers",  label: "Triggers", sortable: false },
+    { key: "reporting", label: "Reporting" },
+    { key: "next",      label: "Next deadline" },
+    { key: "status",    label: "Status" }
+  ];
+
+  function compareIncidents(a, b, key, now) {
+    switch (key) {
+      case "awareAt": return Date.parse(a.awareAt) - Date.parse(b.awareAt);
+      case "severity": return INCIDENT_SEVERITIES.indexOf(a.severity) - INCIDENT_SEVERITIES.indexOf(b.severity);
+      case "status": return INCIDENT_STATUSES.indexOf(a.status) - INCIDENT_STATUSES.indexOf(b.status);
+      case "reporting": return incidentSummary(a, now).worstRank - incidentSummary(b, now).worstRank;
+      case "next": {
+        const na = incidentSummary(a, now).next, nb = incidentSummary(b, now).next;
+        const va = na ? na.deadline : Infinity, vb = nb ? nb.deadline : Infinity;
+        return va === vb ? 0 : va < vb ? -1 : 1;
+      }
+      default: return String(a[key]).localeCompare(String(b[key]));
+    }
+  }
+
+  function filteredIncidents() {
+    const q = incState.q.trim().toLowerCase();
+    const { key, dir } = incState.sort;
+    const now = Date.now();
+    return Incidents.items
+      .filter(i => !incState.status || (incState.status === "!Closed" ? i.status !== "Closed" : i.status === incState.status))
+      .filter(i => !incState.clock || incidentSummary(i, now).count(incState.clock) > 0)
+      .filter(i => !q || [i.id, i.title, i.description, i.severity, i.services.join(" "), i.clients.join(" "), i.status].join(" ").toLowerCase().includes(q))
+      .sort((a, b) => {
+        const c = compareIncidents(a, b, key, now);
+        return (dir === "asc" ? c : -c) || Date.parse(b.awareAt) - Date.parse(a.awareAt);
+      });
+  }
+
+  function incSummaryItems() {
+    const now = Date.now();
+    const all = Incidents.items.map(i => incidentSummary(i, now));
+    const sum = s => all.reduce((n, x) => n + x.count(s), 0);
+    const overdue = sum("Overdue"), soon = sum("Due soon");
+    const open = Incidents.items.filter(i => i.status !== "Closed").length;
+    return [
+      { label: "Open incidents", n: open, note: `${Incidents.items.length - open} closed`, filter: { status: "!Closed", clock: "" } },
+      { label: "Reports overdue", n: overdue, note: overdue ? "Report now and record it" : "Nothing overdue", cls: overdue ? "alert" : "", icon: overdue ? ICON_WARN : "", filter: { status: "", clock: "Overdue" } },
+      { label: "Reports due soon", n: soon, note: "Inside the warning window", cls: soon ? "warn" : "", icon: soon ? ICON_CLOCK : "", filter: { status: "", clock: "Due soon" } },
+      { label: "Upcoming", n: sum("Upcoming"), note: "Clock running", filter: { status: "", clock: "Upcoming" } },
+      { label: "Reports sent", n: sum("Completed"), note: "Marked completed", filter: { status: "", clock: "Completed" } }
+    ];
+  }
+
+  function defaultSelectedIncident() {
+    const now = Date.now();
+    const open = Incidents.items.filter(i => i.status !== "Closed");
+    const pool = open.length ? open : Incidents.items;
+    return pool.slice().sort((a, b) => compareIncidents(a, b, "next", now) || Date.parse(b.awareAt) - Date.parse(a.awareAt))[0] || null;
+  }
+
+  function renderIncidents(view, params) {
+    if (params.has("focus")) {
+      incState.status = ""; incState.clock = ""; incState.q = "";
+      incState.selected = params.get("focus");
+      incState.focus = params.get("focus");
+      history.replaceState(null, "", "#/incidents");
+    }
+
+    view.innerHTML = `
+      <div class="page-head">
+        <div>
+          <h1>Incidents</h1>
+          <div class="sub">Incident register and reporting clocks · NIS2 Art. 23 · GDPR Art. 33 · DORA via financial clients · notifications owner: Head of Legal &amp; Compliance</div>
+        </div>
+        <div class="page-actions">
+          ${resetButtonHTML(Incidents)}
+          <button type="button" class="btn primary" id="log-incident">＋ Log incident</button>
+        </div>
+      </div>
+
+      <section class="card summary-strip docs" id="inc-summary" aria-label="Reporting summary"></section>
+
+      <section class="card inc-panel" id="inc-panel" aria-live="off"></section>
+
+      <section class="card">
+        <div class="toolbar">
+          <input type="search" class="input search" id="f-q" placeholder="Search incidents" aria-label="Search incidents" value="${esc(incState.q)}">
+          <label class="control">Status
+            <select class="select" id="f-status">
+              <option value="">All statuses</option>
+              <option value="!Closed" ${incState.status === "!Closed" ? "selected" : ""}>Not closed</option>
+              ${INCIDENT_STATUSES.map(s => `<option ${incState.status === s ? "selected" : ""}>${s}</option>`).join("")}
+            </select>
+          </label>
+          <label class="control">Reporting
+            <select class="select" id="f-clock">
+              <option value="">Any reporting state</option>
+              ${CLOCK_STATES.slice(0, 4).map(s => `<option value="${s}" ${incState.clock === s ? "selected" : ""}>Has ${s.toLowerCase()} report</option>`).join("")}
+            </select>
+          </label>
+          <span class="spacer"></span>
+          <span class="result-count" id="f-count" aria-live="polite"></span>
+        </div>
+        <div class="table-wrap">
+          <table class="data" id="inc-table">
+            <thead><tr>${headerHTML(INC_COLUMNS)}</tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="table-foot">
+          <span>Click an incident to see its reporting clocks. Deadlines run from the moment Meridiaan became aware of the incident (Incident Response Policy, section 6).</span>
+          <span>Source: 05-policies/02-incident-response-policy.md · example incident is illustrative</span>
+        </div>
+      </section>
+    `;
+
+    $("#f-q").addEventListener("input", e => { incState.q = e.target.value; drawIncidents(); });
+    $("#f-status").addEventListener("change", e => { incState.status = e.target.value; drawIncidents(); });
+    $("#f-clock").addEventListener("change", e => { incState.clock = e.target.value; drawIncidents(); });
+    bindSort($("#inc-table"), incState, [], drawIncidents);
+    $("#log-incident").addEventListener("click", () => openIncidentDialog(null));
+    bindReset(Incidents, "incident register");
+
+    drawIncidents();
+
+    if (incState.focus) {
+      const id = incState.focus;
+      incState.focus = null;
+      if (!focusRow($("#inc-table tbody"), id)) toast(`${id} is not in the incident register`);
+    }
+  }
+
+  function incRowHTML(inc, now) {
+    const s = incidentSummary(inc, now);
+    const trig = [inc.significant && "NIS2", inc.personalData && "GDPR", inc.financialClient && "Client"].filter(Boolean);
+    const flags = ["Overdue", "Due soon"].filter(st => s.count(st))
+      .map(st => `<span class="clock-state ${clockCls(st)} sm">${CLOCK_ICON[st]}${s.count(st)} ${st.toLowerCase()}</span>`).join("");
+    const selected = inc.id === incState.selected;
+    return `
+      <tr tabindex="0" data-id="${esc(inc.id)}" class="${inc.status === "Closed" ? "closed" : ""} ${selected ? "selected" : ""} ${s.count("Overdue") ? "rv-row-overdue" : ""}" aria-label="Show reporting clocks for ${esc(inc.id)}" ${selected ? 'aria-current="true"' : ""}>
+        <td class="id">${esc(inc.id)}${inc.example ? '<span class="tag-new">Example</span>' : ""}</td>
+        <td class="desc inc-desc">
+          <div class="risk-title">${esc(inc.title)}</div>
+          <div class="risk-desc">${esc(inc.services.join(" · ") || "No service recorded")}</div>
+        </td>
+        <td class="nowrap">${esc(fmtDateTime(inc.awareAt))}<span class="lvl">${esc(fmtSpan(now - Date.parse(inc.awareAt)))} ago</span></td>
+        <td>${badgeHTML(inc.severity)}</td>
+        <td class="nowrap">${trig.length ? trig.map(t => `<span class="trig">${t}</span>`).join("") : '<span class="muted">None</span>'}</td>
+        <td class="nowrap"><div class="flag-stack">${flags}</div><span class="lvl">${s.count("Completed")} of ${s.live.length} sent</span></td>
+        <td class="nowrap">${s.next ? `${countdownHTML(s.next, "sm")}<span class="lvl">${esc(s.next.def.title)}</span>` : '<span class="muted">All sent</span>'}</td>
+        <td>${gapStatusHTML(inc.status)}</td>
+      </tr>`;
+  }
+
+  function drawIncidents() {
+    const table = $("#inc-table");
+    if (!table) return;
+    const now = Date.now();
+    if (!incState.selected || !Incidents.find(incState.selected)) {
+      const d = defaultSelectedIncident();
+      incState.selected = d ? d.id : null;
+    }
+    const rows = filteredIncidents();
+    const tbody = $("tbody", table);
+    paintSort(table, incState);
+
+    const strip = $("#inc-summary");
+    strip.innerHTML = incSummaryItems().map(s => {
+      const active = incState.status === s.filter.status && incState.clock === s.filter.clock;
+      return `<button type="button" class="sum-item ${s.cls || ""}" aria-pressed="${active}" data-status="${esc(s.filter.status)}" data-clock="${esc(s.filter.clock)}">
+          <span class="sum-label">${s.icon || ""}${esc(s.label)}</span>
+          <span class="sum-value">${s.n}</span>
+          <span class="sum-note">${esc(s.note)}</span>
+        </button>`;
+    }).join("");
+    $$(".sum-item", strip).forEach(b => b.addEventListener("click", () => {
+      incState.status = b.dataset.status;
+      incState.clock = b.dataset.clock;
+      $("#f-status").value = incState.status;
+      $("#f-clock").value = incState.clock;
+      drawIncidents();
+    }));
+
+    tbody.innerHTML = rows.length ? rows.map(i => incRowHTML(i, now)).join("")
+      : `<tr><td colspan="${INC_COLUMNS.length}"><div class="empty-state">${Incidents.items.length ? "No incidents match these filters." : "No incidents logged. Use “Log incident” to start the reporting clocks."}</div></td></tr>`;
+    bindRows(tbody, selectIncident);
+    $("#f-count").textContent = `Showing ${rows.length} of ${Incidents.items.length} incidents`;
+
+    drawIncidentPanel();
+  }
+
+  function selectIncident(id) {
+    incState.selected = id;
+    drawIncidents();
+    const panel = $("#inc-panel");
+    if (panel) panel.scrollIntoView({ block: "start", behavior: "smooth" });
+  }
+
+  function clockCardHTML(c, inc) {
+    const d = c.def;
+    const now = Date.now();
+    let body;
+    if (!c.triggered) {
+      body = `<div class="clock-off">Not triggered: ${esc(TRIGGER_TEXT[d.trigger].off.toLowerCase())}.</div>`;
+    } else if (c.doneAt) {
+      const done = Date.parse(c.doneAt);
+      const margin = c.deadline - done;
+      body = `
+        <div class="countdown-done">Sent ${esc(fmtDateTime(c.doneAt))}</div>
+        <div class="clock-line">${margin >= 0 ? `${esc(fmtSpan(margin))} before the deadline` : `<b class="late">${esc(fmtSpan(-margin))} late</b>`} (${esc(fmtDateTime(new Date(c.deadline).toISOString()))})</div>`;
+    } else {
+      body = `
+        ${countdownHTML(c, "big")}
+        <div class="clock-line">Deadline <b>${esc(fmtDateTime(new Date(c.deadline).toISOString()))}</b></div>
+        ${c.provisional ? `<div class="clock-line provisional">Provisional: counted from the notification deadline until the notification is marked sent.</div>` : ""}`;
+    }
+    const action = !c.triggered ? ""
+      : c.doneAt
+        ? `<button type="button" class="btn ghost sm" data-undo="${d.key}">Undo</button>`
+        : `<button type="button" class="btn sm ${c.state === "Overdue" ? "danger" : ""}" data-complete="${d.key}">Mark as sent</button>`;
+    return `
+      <article class="clock ${c.cls}" aria-label="${esc(`${d.title}: ${c.state}`)}">
+        <div class="clock-head">
+          <span class="clock-title">${esc(d.title)}${d.key === "client" ? '<span class="clock-tag">DORA-driven, contractual</span>' : ""}</span>
+          ${clockStateHTML(c.state)}
+        </div>
+        <div class="clock-auth">To <b>${esc(d.authority)}</b> · ${esc(d.authorityName)}${d.key === "client" && inc.clients.length ? `: ${esc(inc.clients.join(", "))}` : ""}</div>
+        ${body}
+        <div class="clock-rule">${esc(d.rule)} · ${esc(d.basis)}</div>
+        ${c.triggered ? `<div class="clock-owner">Owner: ${esc(d.owner)}</div>` : ""}
+        ${c.triggered ? `<details class="clock-note"><summary>What this report needs</summary><p>${esc(d.note)}</p></details>` : ""}
+        ${action ? `<div class="clock-actions">${action}</div>` : ""}
+      </article>`;
+  }
+
+  function drawIncidentPanel() {
+    const panel = $("#inc-panel");
+    if (!panel) return;
+    const inc = incState.selected ? Incidents.find(incState.selected) : null;
+    if (!inc) {
+      panel.innerHTML = `<div class="empty-state">No incident selected. Log an incident to see which reporting obligations it triggers.</div>`;
+      return;
+    }
+    const s = incidentSummary(inc);
+    const closed = inc.status === "Closed";
+    const doraNote = inc.financialClient
+      ? `<div class="dora-note">
+          <div class="dora-title">DORA: reporting to the financial supervisor is the client's obligation, not Meridiaan's</div>
+          <p>${esc(inc.clients.join(" and ") || "The affected client")} ${inc.clients.length > 1 ? "are financial entities" : "is a financial entity"} under DORA. ${inc.clients.length > 1 ? "Each classifies" : "It classifies"} the incident and, if it is major, reports it to ${inc.clients.length > 1 ? "its" : "its"} supervisor (the National Bank of Belgium) under DORA Art. 19.
+          Meridiaan is ${inc.clients.length > 1 ? "their" : "its"} ICT third-party service provider and does <b>not</b> report to the supervisor. Meridiaan's role is to <b>support</b>: notify the client without undue delay (the client clock above), then give the facts, updates and evidence the client needs for its own reports, as the contract requires.</p>
+        </div>`
+      : `<div class="dora-note quiet"><p>No financial client is affected, so there is no DORA-driven client notification. If a financial client is later found to be affected, edit the incident to start that clock.</p></div>`;
+    const refs = [
+      ...["DOC-02", "DOC-17"].map(id => Documents.find(id)).filter(Boolean).map(docLinkHTML),
+      gapLinkHTML("G-04"),
+      ...uniqSorted(["R-12", ...inc.risks]).map(riskLinkHTML)
+    ].join("");
+
+    panel.innerHTML = `
+      <div class="inc-head">
+        <div class="inc-head-main">
+          <div class="inc-id">${esc(inc.id)} · ${badgeHTML(inc.severity)} ${gapStatusHTML(inc.status)}${inc.example ? '<span class="tag-new">Worked example</span>' : ""}</div>
+          <h2>${esc(inc.title)}</h2>
+          <div class="inc-meta">
+            <span>Aware <b>${esc(fmtDateTime(inc.awareAt))}</b> (${esc(fmtSpan(Date.now() - Date.parse(inc.awareAt)))} ago)</span>
+            <span>Services: ${esc(inc.services.join(", ") || "none recorded")}</span>
+          </div>
+        </div>
+        <div class="page-actions">
+          <button type="button" class="btn" id="inc-edit">Edit</button>
+          <button type="button" class="btn ${closed ? "" : "primary"}" id="inc-close">${closed ? "Reopen incident" : "Close incident"}</button>
+        </div>
+      </div>
+      <p class="inc-desc-full">${esc(inc.description)}</p>
+      <div class="trigger-row" aria-label="Answers that decide which clocks run">
+        ${["significant", "personalData", "financialClient"].map(k => `<span class="trigger ${inc[k] ? "on" : "off"}">${inc[k] ? "✓" : "–"} ${esc(TRIGGER_TEXT[k][inc[k] ? "on" : "off"])}</span>`).join("")}
+        <span class="trigger-sum">${s.live.length} of ${REPORTING_OBLIGATIONS.length} reporting obligations triggered</span>
+      </div>
+      <div class="clock-grid">${s.clocks.map(c => clockCardHTML(c, inc)).join("")}</div>
+      ${doraNote}
+      <div class="ref-block"><div><span class="label">Playbook &amp; links</span> <span class="ref-links">${refs}</span></div></div>`;
+
+    $("#inc-edit").addEventListener("click", () => openIncidentDialog(inc.id));
+    $("#inc-close").addEventListener("click", () => toggleIncidentClosed(inc.id));
+    $$("[data-complete]", panel).forEach(b => b.addEventListener("click", () => setObligation(inc.id, b.dataset.complete, true)));
+    $$("[data-undo]", panel).forEach(b => b.addEventListener("click", () => setObligation(inc.id, b.dataset.undo, false)));
+  }
+
+  function setObligation(id, key, done) {
+    const inc = Incidents.find(id);
+    if (!inc) return;
+    const def = REPORTING_OBLIGATIONS.find(o => o.key === key);
+    const obligations = { ...inc.obligations };
+    if (done) obligations[key] = { doneAt: new Date().toISOString() };
+    else delete obligations[key];
+    const ok = Incidents.upsert({ ...inc, obligations }, id);
+    drawIncidents();
+    updateNavCounts();
+    toast(savedMsg(ok, `${def.title} ${done ? "marked as sent" : "reopened"}`));
+  }
+
+  function toggleIncidentClosed(id) {
+    const inc = Incidents.find(id);
+    if (!inc) return;
+    if (inc.status === "Closed") {
+      const ok = Incidents.upsert({ ...inc, status: "Open", closedAt: "" }, id);
+      drawIncidents();
+      toast(savedMsg(ok, `${id} reopened`));
+      return;
+    }
+    const pending = incidentClocks(inc).filter(c => c.triggered && !c.doneAt);
+    if (pending.length && !confirm(`${plural(pending.length, "reporting obligation")} not marked as sent (${pending.map(c => c.def.title).join(", ")}).\n\nClose ${id} anyway? The clocks keep running until each report is marked as sent.`)) return;
+    const ok = Incidents.upsert({ ...inc, status: "Closed", closedAt: new Date().toISOString() }, id);
+    drawIncidents();
+    toast(savedMsg(ok, `${id} closed`));
+  }
+
+  /* One-second ticker: live countdowns; redraws when a clock changes state */
+  function tickClocks() {
+    const els = $$("[data-deadline]");
+    if (!els.length) return;
+    const now = Date.now();
+    let changed = false;
+    els.forEach(el => {
+      const deadline = +el.dataset.deadline;
+      el.textContent = now > deadline ? `Overdue by ${fmtDuration(now - deadline)}` : `${fmtDuration(deadline - now)} left`;
+      if (clockState(deadline, +el.dataset.soon, now) !== el.dataset.state) changed = true;
+    });
+    if (changed) { drawIncidents(); updateNavCounts(); }
+  }
+
+  /* ---------- Log / edit incident dialog ---------- */
+
+  const incDialog = { el: null, form: null, editingId: null };
+
+  function setupIncidentDialog() {
+    incDialog.el = $("#inc-dialog");
+    incDialog.form = $("#inc-form");
+    const f = incDialog.form;
+    f.severity.innerHTML = INCIDENT_SEVERITIES.map(s => `<option>${s}</option>`).join("");
+    f.status.innerHTML = INCIDENT_STATUSES.map(s => `<option>${s}</option>`).join("");
+    $("#inc-services").innerHTML = INCIDENT_SERVICES.map(s => `<label class="check-item"><input type="checkbox" name="services" value="${esc(s)}"> ${esc(s)}</label>`).join("");
+    $("#inc-clients").innerHTML = FINANCIAL_CLIENTS.map(c => `<label class="check-item"><input type="checkbox" name="clients" value="${esc(c)}"> ${esc(c)}</label>`).join("");
+    setupDialogChrome(incDialog.el);
+
+    // Severity proposes the NIS2 significance answer; the user can override it
+    f.severity.addEventListener("change", () => {
+      f.significant.value = ["High", "Critical"].includes(f.severity.value) ? "Yes" : "No";
+      updateIncidentPreview();
+    });
+    ["significant", "personalData", "financialClient", "awareAt"].forEach(k => f[k].addEventListener("change", updateIncidentPreview));
+    f.awareAt.addEventListener("input", updateIncidentPreview);
+    $("#inc-clients").addEventListener("change", updateIncidentPreview);
+    f.addEventListener("submit", e => { e.preventDefault(); saveIncidentDialog(); });
+    $("#delete-incident").addEventListener("click", () => {
+      const id = incDialog.editingId;
+      if (!id || !confirm(`Delete ${id} from the incident register? This also removes its reporting record.`)) return;
+      const ok = Incidents.remove(id);
+      if (incState.selected === id) incState.selected = null;
+      incDialog.el.close();
+      render();
+      toast(savedMsg(ok, `${id} deleted`));
+    });
+  }
+
+  const checkedValues = name => $$(`#inc-form input[name="${name}"]:checked`).map(i => i.value);
+
+  function incidentFromForm(base) {
+    const f = incDialog.form;
+    const aware = f.awareAt.value ? new Date(f.awareAt.value) : null;
+    return {
+      ...(base || {}),
+      title: f.title.value, description: f.description.value,
+      awareAt: aware && !isNaN(aware) ? aware.toISOString() : "",
+      severity: f.severity.value, significant: f.significant.value === "Yes",
+      services: checkedValues("services"),
+      personalData: f.personalData.value === "Yes",
+      financialClient: f.financialClient.value === "Yes",
+      clients: checkedValues("clients"),
+      status: base ? f.status.value : "Open",
+      obligations: base ? base.obligations : {}
+    };
+  }
+
+  /* Shows, before saving, which clocks these answers will start */
+  function updateIncidentPreview() {
+    const f = incDialog.form;
+    $("#inc-clients-field").hidden = f.financialClient.value !== "Yes";
+    const draft = incidentFromForm(incDialog.editingId ? Incidents.find(incDialog.editingId) : null);
+    if (!draft.awareAt) {
+      $("#inc-preview").innerHTML = `<span class="muted">Enter the date and time of awareness to see the deadlines.</span>`;
+      return;
+    }
+    const clocks = incidentClocks(normaliseIncident(draft));
+    $("#inc-preview").innerHTML = `<div class="label">Reporting clocks these answers start</div>
+      <ul class="preview-list">${clocks.map(c => `<li class="${c.triggered ? "on" : "off"}">
+        <span>${c.triggered ? "✓" : "–"} ${esc(c.def.title)} <span class="muted">to ${esc(c.def.authority)}</span></span>
+        <span>${c.triggered ? `due ${esc(fmtDateTime(new Date(c.deadline).toISOString()))}` : "not triggered"}</span></li>`).join("")}</ul>`;
+  }
+
+  function openIncidentDialog(id) {
+    const inc = id ? Incidents.find(id) : null;
+    const f = incDialog.form;
+    incDialog.editingId = inc ? inc.id : null;
+    f.reset();
+    clearErrors(f);
+    $("#inc-dialog-title").textContent = inc ? `Edit ${inc.id}` : "Log incident";
+    $("#inc-dialog-sub").textContent = inc ? inc.title : "Deadlines start from the moment Meridiaan became aware of the incident.";
+    $("#save-incident").textContent = inc ? "Save changes" : "Log incident and start clocks";
+    $("#delete-incident").hidden = !inc;
+    $("#inc-status-field").hidden = !inc;
+
+    f.title.value = inc ? inc.title : "";
+    f.description.value = inc ? inc.description : "";
+    f.awareAt.value = toLocalInput(inc ? inc.awareAt : new Date().toISOString());
+    f.awareAt.max = toLocalInput(new Date(Date.now() + 5 * 60000).toISOString());
+    f.severity.value = inc ? inc.severity : "Medium";
+    f.significant.value = inc ? (inc.significant ? "Yes" : "No") : "No";
+    f.personalData.value = inc && inc.personalData ? "Yes" : "No";
+    f.financialClient.value = inc && inc.financialClient ? "Yes" : "No";
+    f.status.value = inc ? inc.status : "Open";
+    $$('#inc-form input[name="services"]').forEach(i => { i.checked = !!inc && inc.services.includes(i.value); });
+    $$('#inc-form input[name="clients"]').forEach(i => { i.checked = !!inc && inc.clients.includes(i.value); });
+    updateIncidentPreview();
+
+    tooltip.hide();
+    incDialog.el.showModal();
+    f.title.focus();
+  }
+
+  function nextIncidentId(awareISO) {
+    const year = new Date(awareISO).getFullYear();
+    const prefix = `INC-${year}-`;
+    const max = Incidents.items.filter(i => i.id.startsWith(prefix)).reduce((m, i) => Math.max(m, idNum(i.id.slice(prefix.length))), 0);
+    return prefix + String(max + 1).padStart(3, "0");
+  }
+
+  function saveIncidentDialog() {
+    const f = incDialog.form;
+    const existing = incDialog.editingId ? Incidents.find(incDialog.editingId) : null;
+    const data = incidentFromForm(existing);
+    const errors = {};
+    if (!data.title.trim()) errors.title = "Give the incident a short title.";
+    if (!data.awareAt) errors.awareAt = "Enter when Meridiaan became aware of it.";
+    else if (Date.parse(data.awareAt) > Date.now() + 5 * 60000) errors.awareAt = "Awareness cannot be in the future.";
+    if (!data.services.length) errors.services = "Select at least one affected service.";
+    if (data.financialClient && !data.clients.length) errors.clients = "Select the affected financial client.";
+    $("#inc-services").classList.toggle("invalid", !!errors.services);
+    $("#inc-clients").classList.toggle("invalid", !!errors.clients);
+    $$(".err", f).forEach(e => { e.textContent = errors[e.dataset.err] || ""; });
+    ["title", "awareAt"].forEach(k => f[k].classList.toggle("invalid", !!errors[k]));
+    const first = Object.keys(errors)[0];
+    if (first) {
+      const target = first === "services" ? $('#inc-form input[name="services"]') : first === "clients" ? $('#inc-form input[name="clients"]') : f[first];
+      target.focus();
+      return;
+    }
+
+    if (existing && data.status === "Closed" && existing.status !== "Closed") data.closedAt = new Date().toISOString();
+    if (data.status !== "Closed") data.closedAt = "";
+    data.id = existing ? existing.id : nextIncidentId(data.awareAt);
+    const ok = Incidents.upsert(data, existing ? existing.id : null);
+    incState.selected = data.id;
+    incDialog.el.close();
+    render();
+    const live = incidentClocks(Incidents.find(data.id)).filter(c => c.triggered).length;
+    toast(savedMsg(ok, existing ? `${data.id} updated` : `${data.id} logged · ${plural(live, "reporting clock")} started`));
+    if (!existing) { const p = $("#inc-panel"); if (p) p.scrollIntoView({ block: "start" }); }
   }
 
   /* =========================================================
@@ -1357,6 +2475,10 @@
     setupRiskDialog();
     setupControlDialog();
     setupGapDialog();
+    setupDocDialog();
+    setupIncidentDialog();
+    setInterval(tickClocks, 1000);
+    setInterval(updateNavCounts, 60000);
     window.addEventListener("hashchange", render);
     window.addEventListener("scroll", () => tooltip.hide(), { passive: true });
     if (!location.hash) history.replaceState(null, "", "#/dashboard");

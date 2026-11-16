@@ -660,6 +660,7 @@ table.data {
   white-space: nowrap;
 }
 .ref-link.mono { font-family: var(--mono); font-size: 11.5px; }
+.ref-block .ref-link { white-space: normal; overflow-wrap: anywhere; }
 .ref-link .dot { width: 7px; height: 7px; }
 a.ref-link:hover { border-color: var(--accent); background: var(--accent-soft); text-decoration: underline; }
 a.ref-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -682,6 +683,199 @@ a.ref-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px
 .gap-status.in-progress { color: var(--accent); background: var(--accent-soft); border-color: #c9d8e8; }
 .gap-status.closed { color: var(--low); background: var(--low-bg); border-color: #cfe5d8; }
 .data tbody tr.closed td.desc .risk-title { text-decoration: line-through; text-decoration-color: var(--ink-3); }
+
+/* ---------- Documents ----------
+ * Flag by exception: only Overdue and Due soon carry colour. Overdue is
+ * strong (red, bold, icon, day count, row marker); Due soon is a light
+ * amber note; Current stays in muted ink. */
+
+.nav-count {
+  margin-left: auto;
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--critical);
+  color: #fff;
+  font-size: 11px; font-weight: 700; line-height: 18px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.rv-icon {
+  width: 14px; height: 14px; flex: none;
+  fill: none; stroke: currentColor; stroke-width: 1.9;
+  stroke-linejoin: round; stroke-linecap: round;
+}
+.rv { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; white-space: nowrap; }
+.rv.overdue {
+  color: #fff; background: var(--critical);
+  font-weight: 700; padding: 2px 8px 2px 6px; border-radius: 4px;
+}
+.rv-days { display: block; margin-top: 3px; font-size: 12px; font-weight: 700; color: var(--critical); font-variant-numeric: tabular-nums; }
+.rv.due-soon {
+  color: var(--medium); background: var(--medium-bg);
+  border: 1px solid #eedfb6; padding: 1px 7px 1px 5px; border-radius: 4px; font-weight: 500;
+}
+.rv.current { color: var(--ink-3); }
+.dot.rv-overdue { --dot: var(--critical); }
+.dot.rv-due-soon { --dot: var(--st-partial); }
+
+#doc-table th button, #doc-table th.nosort, #doc-table td { padding-left: 8px; padding-right: 8px; }
+.data td.desc.doc-desc { min-width: 200px; max-width: 320px; }
+#doc-table td.owner { min-width: 90px; max-width: 140px; }
+#doc-table td.mono-cell { font-family: var(--mono); font-size: 12px; color: var(--ink-2); }
+#doc-table td.doc-status.unapproved { color: var(--ink-2); font-style: italic; }
+#doc-table td.doc-status .lvl { font-style: normal; }
+#doc-table td.due-cell.overdue { color: var(--critical); font-weight: 700; }
+#doc-table td.due-cell.due-soon { color: var(--medium); }
+.data tbody tr.rv-row-overdue td:first-child { box-shadow: inset 4px 0 0 var(--critical); }
+.data tbody tr.rv-row-overdue td { background: #fdf7f6; }
+.data tbody tr.rv-row-overdue:hover td { background: #faeeec; }
+
+.summary-strip.docs { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.sum-item.alert .sum-label, .sum-item.alert .sum-value { color: var(--critical); font-weight: 700; }
+.sum-item.alert { box-shadow: inset 0 3px 0 var(--critical); }
+.sum-item.alert[aria-pressed="true"] { box-shadow: inset 0 3px 0 var(--critical), inset 0 -3px 0 var(--accent); }
+.sum-item.warn .sum-label, .sum-item.warn .sum-value { color: var(--medium); }
+
+/* Detail panel */
+.next-step {
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  border-left-width: 4px;
+  background: var(--surface-alt);
+}
+.next-step p { margin: 4px 0 0; color: var(--ink-2); font-size: 13px; }
+.next-title { display: flex; align-items: center; gap: 7px; font-weight: 700; font-size: 14px; }
+.next-step.overdue { background: var(--critical-bg); border-color: #f1cfcc; border-left-color: var(--critical); }
+.next-step.overdue .next-title { color: var(--critical); }
+.next-step.due-soon { background: var(--medium-bg); border-color: #eedfb6; border-left-color: var(--st-partial); }
+.next-step.due-soon .next-title { color: var(--medium); }
+.next-step.info { background: var(--accent-soft); border-color: #c9d8e8; border-left-color: var(--accent); }
+.next-step.quiet .next-title { font-weight: 600; color: var(--ink-2); }
+.next-step a { color: var(--accent); }
+.due-preview { font-size: 13px; color: var(--ink-2); display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.due-preview .rv-days { display: inline; margin: 0; }
+#doc-dialog { width: min(700px, calc(100vw - 32px)); }
+
+/* ---------- Incidents ----------
+ * Clock colours follow the same language: Overdue red (strong), Due soon
+ * amber, Upcoming neutral blue, Completed green, Not triggered grey and
+ * hatched. Every state is also written out as text. */
+
+.btn.danger { background: var(--critical); border-color: var(--critical); color: #fff; }
+.btn.danger:hover { background: #962019; border-color: #962019; }
+.gap-status.contained { color: var(--medium); background: var(--medium-bg); border-color: #eedfb6; }
+
+.inc-panel { padding: 18px 20px; margin-bottom: 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.inc-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+.inc-head-main { min-width: 0; flex: 1 1 420px; }
+.inc-head h2 { font-size: 17px; margin: 6px 0 4px; }
+.inc-id { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-family: var(--mono); font-size: 12.5px; color: var(--ink-2); }
+.inc-meta { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 12.5px; color: var(--ink-2); }
+.inc-desc-full { margin: 0; color: var(--ink-2); font-size: 13px; max-width: 980px; }
+
+.trigger-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.trigger {
+  font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 4px;
+  border: 1px solid var(--border-strong); background: var(--surface-alt); color: var(--ink-3);
+}
+.trigger.on { color: var(--ink); background: var(--surface); border-color: var(--ink-3); }
+.trigger-sum { font-size: 12.5px; color: var(--ink-2); margin-left: 4px; }
+
+.clock-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(186px, 1fr)); gap: 12px; align-items: stretch; }
+.clock {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 12px 14px 12px;
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  min-width: 0;
+}
+.clock.overdue { border-color: #f1cfcc; border-top-color: var(--critical); background: var(--critical-bg); }
+.clock.due-soon { border-color: #eedfb6; border-top-color: var(--st-partial); background: var(--medium-bg); }
+.clock.completed { border-top-color: var(--low); }
+.clock.not-triggered {
+  border-top-color: var(--border-strong); color: var(--ink-3);
+  background: repeating-linear-gradient(135deg, #f8f9fa 0 6px, #f1f3f5 6px 7px);
+}
+.clock-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 6px 8px; }
+.clock-title { font-weight: 700; font-size: 13.5px; line-height: 1.3; }
+.clock.not-triggered .clock-title { color: var(--ink-2); font-weight: 600; }
+.clock-tag {
+  display: block; margin-top: 3px; width: fit-content;
+  font-size: 11px; font-weight: 600;
+  color: var(--accent); background: var(--accent-soft); border: 1px solid #c9d8e8; border-radius: 3px; padding: 0 5px;
+}
+.clock-state {
+  display: inline-flex; align-items: center; gap: 4px; flex: none;
+  font-size: 11.5px; font-weight: 600; padding: 1px 7px; border-radius: 4px;
+  border: 1px solid var(--border-strong); background: var(--surface); color: var(--ink-2); white-space: nowrap;
+}
+.clock-state.overdue { background: var(--critical); border-color: var(--critical); color: #fff; font-weight: 700; }
+.clock-state.due-soon { background: var(--surface); border-color: #e2c98a; color: var(--medium); }
+.clock-state.upcoming { color: var(--accent); border-color: #c9d8e8; background: var(--accent-soft); }
+.clock-state.completed { color: var(--low); border-color: #cfe5d8; background: var(--low-bg); }
+.clock-state.not-triggered { color: var(--ink-3); background: transparent; }
+.clock-state.sm { font-size: 11px; padding: 0 6px; }
+.clock-state .rv-icon { width: 12px; height: 12px; }
+.clock-auth { font-size: 12.5px; color: var(--ink-2); overflow-wrap: anywhere; }
+.countdown { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.countdown.big { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; color: var(--ink); }
+.clock.overdue .countdown.big { color: var(--critical); }
+.clock.due-soon .countdown.big { color: var(--medium); }
+.countdown.sm { font-size: 12.5px; font-weight: 600; }
+tr .countdown.sm[data-state="Overdue"] { color: var(--critical); font-weight: 700; }
+tr .countdown.sm[data-state="Due soon"] { color: var(--medium); }
+.countdown-done { font-size: 15px; font-weight: 700; color: var(--low); }
+.clock-line { font-size: 12.5px; color: var(--ink-2); }
+.clock-line .late { color: var(--critical); }
+.clock-line.provisional { font-size: 11.5px; color: var(--ink-3); font-style: italic; }
+.clock-off { font-size: 12.5px; font-style: italic; padding: 6px 0; }
+.clock-rule { font-size: 11.5px; color: var(--ink-3); }
+.clock-owner { font-size: 12px; color: var(--ink-2); }
+.clock-note { font-size: 12px; color: var(--ink-2); }
+.clock-note summary { cursor: pointer; color: var(--accent); }
+.clock-note p { margin: 4px 0 0; }
+.clock-actions { margin-top: auto; padding-top: 4px; }
+
+.dora-note {
+  padding: 12px 14px; border-radius: var(--radius-sm);
+  border: 1px solid #c9d8e8; border-left: 4px solid var(--accent); background: var(--accent-soft);
+}
+.dora-title { font-weight: 700; font-size: 13.5px; }
+.dora-note p { margin: 4px 0 0; font-size: 13px; color: var(--ink-2); }
+.dora-note.quiet { background: var(--surface-alt); border-color: var(--border); border-left-color: var(--border-strong); }
+
+.data td.desc.inc-desc { min-width: 180px; max-width: 340px; }
+#inc-table th button, #inc-table th.nosort, #inc-table td { padding-left: 8px; padding-right: 8px; }
+.trig {
+  display: inline-block; font-size: 11px; font-weight: 600; margin-right: 4px;
+  padding: 0 6px; border-radius: 3px; border: 1px solid var(--border-strong); color: var(--ink-2); background: var(--surface-alt);
+}
+.flag-stack { display: flex; flex-wrap: wrap; gap: 4px; }
+.data tbody tr.selected td { background: var(--accent-soft); }
+.data tbody tr.selected td:first-child { box-shadow: inset 4px 0 0 var(--accent); }
+.data tbody tr.selected.rv-row-overdue td:first-child { box-shadow: inset 4px 0 0 var(--critical); }
+.data tbody tr.closed td.inc-desc .risk-title { color: var(--ink-2); }
+
+/* Incident form */
+.form-row.three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.fieldset legend { font-size: 12.5px; font-weight: 600; color: var(--ink-2); padding: 0; margin-bottom: 5px; }
+.check-list { display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 8px 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); }
+.check-list.invalid { border-color: var(--critical); }
+.check-item { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
+.check-item input { accent-color: var(--accent); width: 15px; height: 15px; margin: 0; }
+.hint { font-size: 12px; color: var(--ink-3); margin-top: -8px; }
+.preview-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.preview-list li { display: flex; justify-content: space-between; gap: 12px; font-size: 12.5px; }
+.preview-list li.on { color: var(--ink); }
+.preview-list li.off { color: var(--ink-3); }
+#inc-preview { display: grid; }
+#inc-dialog { width: min(720px, calc(100vw - 32px)); }
 
 .control.check { gap: 7px; cursor: pointer; user-select: none; }
 .control.check input { width: 15px; height: 15px; margin: 0; accent-color: var(--accent); }
@@ -778,7 +972,6 @@ a.ref-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px
 }
 .ref-block > div { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .ref-block .label { min-width: 110px; }
-#control-gaps { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .dialog-body { padding: 18px 20px; display: grid; gap: 14px; max-height: calc(100vh - 200px); overflow-y: auto; }
 .dialog-foot {
   display: flex; align-items: center; gap: 8px;
@@ -835,8 +1028,8 @@ a.ref-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px
   .sidebar-foot { display: none; }
   .main { padding: 20px 16px 40px; }
   .grid.kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .summary-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .form-row.two { grid-template-columns: 1fr; }
+  .summary-strip, .summary-strip.docs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .form-row.two, .form-row.three { grid-template-columns: 1fr; }
   .input.search { width: 100%; }
 }
 

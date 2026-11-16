@@ -42,6 +42,7 @@
         <a class="nav-item" href="#/documents" data-route="documents">
           <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 2h7l4 4v12H5zM12 2v4h4M8 10h5M8 13h5"/></svg>
           Documents
+          <span class="nav-count" id="nav-doc-count" hidden></span>
         </a>
         <a class="nav-item" href="#/evidence" data-route="evidence">
           <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4h12v13H4zM7 2v4M13 2v4M7 11l2 2 4-4"/></svg>
@@ -50,6 +51,7 @@
         <a class="nav-item" href="#/incidents" data-route="incidents">
           <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2v3M10 15v3M2 10h3M15 10h3M10 6a4 4 0 1 1 0 8 4 4 0 0 1 0-8z"/></svg>
           Incidents
+          <span class="nav-count" id="nav-inc-count" hidden></span>
         </a>
         <a class="nav-item" href="#/assurance" data-route="assurance">
           <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 17V8l7-5 7 5v9zM8 17v-5h4v5"/></svg>
@@ -234,6 +236,162 @@
         <span class="spacer"></span>
         <button type="button" class="btn" data-close>Cancel</button>
         <button type="submit" class="btn primary">Save changes</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <!-- Document detail panel -->
+  <dialog id="doc-dialog" class="dialog" aria-labelledby="doc-dialog-title">
+    <form id="doc-form" method="dialog" novalidate>
+      <header class="dialog-head">
+        <div>
+          <h2 id="doc-dialog-title">Document</h2>
+          <div class="dialog-sub" id="doc-dialog-sub"></div>
+        </div>
+        <button type="button" class="icon-btn" data-close aria-label="Close">×</button>
+      </header>
+
+      <div class="dialog-body">
+        <div id="doc-next"></div>
+
+        <div class="readonly">
+          <div class="label">What it is</div>
+          <p id="doc-purpose"></p>
+        </div>
+
+        <div class="ref-block" id="doc-refs"></div>
+
+        <div class="form-row two">
+          <label class="field">
+            <span>Owner</span>
+            <input name="owner" list="doc-people" required maxlength="80">
+            <small class="err" data-err="owner"></small>
+          </label>
+          <label class="field">
+            <span>Approver</span>
+            <input name="approver" list="doc-people" maxlength="80" placeholder="Not assigned">
+          </label>
+          <datalist id="doc-people"></datalist>
+        </div>
+
+        <div class="form-row two">
+          <label class="field">
+            <span>Version</span>
+            <input name="version" maxlength="12">
+            <small class="err" data-err="version"></small>
+          </label>
+          <label class="field">
+            <span>Status</span>
+            <select name="status"></select>
+          </label>
+        </div>
+
+        <div class="form-row two">
+          <label class="field">
+            <span>Last reviewed</span>
+            <input name="lastReviewed" type="date">
+            <small class="err" data-err="lastReviewed"></small>
+          </label>
+          <label class="field">
+            <span>Review frequency</span>
+            <select name="reviewMonths"></select>
+          </label>
+        </div>
+
+        <label class="field" id="doc-first-due">
+          <span>First issue due (never reviewed)</span>
+          <input name="firstDue" type="date">
+          <small class="err" data-err="firstDue"></small>
+        </label>
+
+        <div class="due-preview" id="doc-due-preview" aria-live="polite"></div>
+      </div>
+
+      <footer class="dialog-foot">
+        <button type="button" class="btn" id="doc-reviewed">Mark reviewed today</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn" data-close>Cancel</button>
+        <button type="submit" class="btn primary">Save changes</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <!-- Log / edit incident dialog -->
+  <dialog id="inc-dialog" class="dialog" aria-labelledby="inc-dialog-title">
+    <form id="inc-form" method="dialog" novalidate>
+      <header class="dialog-head">
+        <div>
+          <h2 id="inc-dialog-title">Log incident</h2>
+          <div class="dialog-sub" id="inc-dialog-sub"></div>
+        </div>
+        <button type="button" class="icon-btn" data-close aria-label="Close">×</button>
+      </header>
+
+      <div class="dialog-body">
+        <label class="field">
+          <span>Incident title</span>
+          <input name="title" required maxlength="140" placeholder="e.g. Ransomware on managed file server">
+          <small class="err" data-err="title"></small>
+        </label>
+
+        <label class="field">
+          <span>Description</span>
+          <textarea name="description" rows="3" placeholder="What happened, what is affected, what has been done so far"></textarea>
+        </label>
+
+        <div class="form-row two">
+          <label class="field">
+            <span>Date and time of awareness</span>
+            <input name="awareAt" type="datetime-local" required>
+            <small class="err" data-err="awareAt"></small>
+          </label>
+          <label class="field">
+            <span>Severity</span>
+            <select name="severity"></select>
+          </label>
+        </div>
+
+        <fieldset class="field fieldset">
+          <legend>Affected services</legend>
+          <div class="check-list" id="inc-services"></div>
+          <small class="err" data-err="services"></small>
+        </fieldset>
+
+        <div class="form-row three">
+          <label class="field">
+            <span>Significant incident (NIS2)?</span>
+            <select name="significant"><option>No</option><option>Yes</option></select>
+          </label>
+          <label class="field">
+            <span>Personal data involved?</span>
+            <select name="personalData"><option>No</option><option>Yes</option></select>
+          </label>
+          <label class="field">
+            <span>Financial client affected?</span>
+            <select name="financialClient"><option>No</option><option>Yes</option></select>
+          </label>
+        </div>
+        <small class="hint">Severity High or Critical sets “significant” to Yes; change it if the NIS2 thresholds say otherwise.</small>
+
+        <fieldset class="field fieldset" id="inc-clients-field" hidden>
+          <legend>Which financial client?</legend>
+          <div class="check-list" id="inc-clients"></div>
+          <small class="err" data-err="clients"></small>
+        </fieldset>
+
+        <label class="field" id="inc-status-field">
+          <span>Incident status</span>
+          <select name="status"></select>
+        </label>
+
+        <div class="ref-block" id="inc-preview" aria-live="polite"></div>
+      </div>
+
+      <footer class="dialog-foot">
+        <button type="button" class="btn danger-ghost" id="delete-incident" hidden>Delete incident</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn" data-close>Cancel</button>
+        <button type="submit" class="btn primary" id="save-incident">Log incident and start clocks</button>
       </footer>
     </form>
   </dialog>

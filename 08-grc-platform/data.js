@@ -5,12 +5,14 @@
  *   01-risk-register/01-risk-register.md          -> risks
  *   02-iso27001-soa/01-statement-of-applicability.md -> controls
  *   04-gap-assessment/01-gap-assessment.md         -> gaps
+ *   header tables of 00-07 documents               -> documents
+ *   05-policies/02-incident-response-policy.md     -> incident reporting clocks
  *
  * Edit this file to change the baseline data. User changes made in the
  * app are stored in browser localStorage on top of this baseline; use
  * "Reset to source data" in each module to discard them.
  *
- * If you change the RISKS, CONTROLS or GAPS arrays here, bump DATA_VERSION
+ * If you change the RISKS, CONTROLS, GAPS or DOCUMENTS arrays, bump DATA_VERSION
  * so browsers holding an older saved copy are told the source has changed.
  *
  * Fictional content: Meridiaan ICT Services BV, its clients and people
@@ -410,4 +412,238 @@ const GAPS = [
     missing: "Physical monitoring and environmental/climate protections at sites not fully evidenced",
     controls: ["A.7.4", "A.7.5", "A.7.11"], risks: ["R-16", "R-08"],
     owner: "Head of Operations" /* owns R-16, R-08 */ }
+];
+
+/*
+ * ISMS document set (Documents module).
+ *
+ * From the source: name, owner, approver and review frequency come from
+ * each document's header table where it is in this repo (`path`). Every
+ * document in the repo is a 0.1 draft dated 2026-09-21 or 2026-09-30.
+ *
+ * ILLUSTRATIVE (not in the source), chosen to reflect the governance
+ * weakness the gap assessment describes (G-09):
+ *  - Five policies have an older approved version still in force from
+ *    before the ISMS project. `version`, `status` and `lastReviewed`
+ *    describe that version; `rewrite` notes the 0.1 draft in 05-policies
+ *    that will replace it. Four of them are past their review date.
+ *  - The incident register, supplier register, training records, internal
+ *    audit report and management review minutes are records a real ISMS
+ *    keeps outside this repo (`path` is empty). The internal audit and
+ *    management review have not happened yet (roadmap phase 3), so they
+ *    are "Not started" with a `firstDue` date instead of `lastReviewed`.
+ *  - Approvers missing from a source header are left empty on purpose.
+ *  - Links to controls, risks and gaps use the document's own references
+ *    where it has them, otherwise the gap/SoA entries for the same topic.
+ *
+ * Review status is calculated in the app from lastReviewed + reviewMonths
+ * (or firstDue) against today's date: Overdue, Due soon (<= 60 days) or
+ * Current. `reviewNote` is the review rule as the source words it.
+ */
+const DOC_TYPES = ["Policy", "Register", "Record", "Report"];
+const DOC_STATUSES = ["Approved", "Draft", "Not started"];
+
+const DOCUMENTS = [
+  /* ---- Policies (05-policies) ---- */
+  { id: "DOC-01", name: "Information Security Policy", type: "Policy",
+    purpose: "The top-level rulebook: management's commitment to security and the direction every other policy follows.",
+    owner: "CISO", approver: "CEO", version: "1.0", status: "Approved",
+    lastReviewed: "2025-05-20", reviewMonths: 12, reviewNote: "Annually, and on significant change",
+    path: "05-policies/01-information-security-policy.md", rewrite: "0.1 draft rewrite dated 2026-09-30",
+    clauses: "Clause 5.2", controls: ["A.5.1", "A.5.2", "A.5.4", "A.5.36"], risks: [], risksNote: "Underpins all", gaps: ["G-09"] },
+  { id: "DOC-02", name: "Incident Response Policy", type: "Policy",
+    purpose: "How incidents are reported, handled and notified to regulators and clients within the legal deadlines.",
+    owner: "Head of Legal & Compliance", approver: "CISO", version: "0.1", status: "Draft",
+    lastReviewed: "2026-09-30", reviewMonths: 12, reviewNote: "Annually, and after any significant incident",
+    path: "05-policies/02-incident-response-policy.md",
+    controls: ["A.5.24", "A.5.25", "A.5.26", "A.5.27", "A.5.28", "A.6.8"], risks: ["R-12", "R-06", "R-14"], gaps: ["G-04"] },
+  { id: "DOC-03", name: "Access Control Policy", type: "Policy",
+    purpose: "Who may access which systems, how access is granted and reviewed, and the extra rules for admin accounts.",
+    owner: "CISO", approver: "CEO", version: "1.1", status: "Approved",
+    lastReviewed: "2025-08-04", reviewMonths: 12, reviewNote: "Annually, and on significant change",
+    path: "05-policies/03-access-control-policy.md", rewrite: "0.1 draft rewrite dated 2026-09-30",
+    controls: ["A.5.15", "A.5.16", "A.5.17", "A.5.18", "A.8.2", "A.8.3", "A.8.5", "A.8.18"], risks: ["R-03", "R-04", "R-10", "R-07"], gaps: ["G-01", "G-03", "G-07"] },
+  { id: "DOC-04", name: "Supplier Security Policy", type: "Policy",
+    purpose: "The security checks and contract terms required before and while using suppliers and sub-processors.",
+    owner: "Head of Legal & Compliance", approver: "CISO", version: "1.0", status: "Approved",
+    lastReviewed: "2025-12-15", reviewMonths: 12, reviewNote: "Annually, and on significant change",
+    path: "05-policies/04-supplier-security-policy.md", rewrite: "0.1 draft rewrite dated 2026-09-30",
+    controls: ["A.5.19", "A.5.20", "A.5.21", "A.5.22"], risks: ["R-03", "R-11"], gaps: ["G-06"] },
+  { id: "DOC-05", name: "Business Continuity and ICT Resilience Policy", type: "Policy",
+    purpose: "How services keep running or recover after an outage, and how often recovery is tested.",
+    owner: "Head of Operations", approver: "CISO", version: "1.0", status: "Approved",
+    lastReviewed: "2024-11-04", reviewMonths: 12, reviewNote: "Annually, and after any major disruption or test",
+    path: "05-policies/05-business-continuity-policy.md", rewrite: "0.1 draft rewrite dated 2026-09-30",
+    controls: ["A.5.29", "A.5.30", "A.8.13", "A.8.14"], risks: ["R-01", "R-05", "R-08", "R-16"], gaps: ["G-05", "G-10"] },
+  { id: "DOC-06", name: "Acceptable Use Policy", type: "Policy",
+    purpose: "What staff may and may not do with company devices, data and accounts.",
+    owner: "CISO", approver: "CEO", version: "2.0", status: "Approved",
+    lastReviewed: "2025-10-01", reviewMonths: 12, reviewNote: "Annually, and on significant change",
+    path: "05-policies/06-acceptable-use-policy.md", rewrite: "0.1 draft rewrite dated 2026-09-30",
+    controls: ["A.5.10", "A.8.1", "A.7.7"], risks: ["R-07", "R-10", "R-14"], gaps: ["G-09"] },
+  { id: "DOC-07", name: "Cryptography Policy", type: "Policy",
+    purpose: "When and how data must be encrypted, and how encryption keys are managed.",
+    owner: "CISO", approver: "CEO", version: "0.1", status: "Draft",
+    lastReviewed: "2026-09-30", reviewMonths: 12, reviewNote: "Annually, and on significant change",
+    path: "05-policies/07-cryptography-policy.md",
+    controls: ["A.8.24"], risks: ["R-04", "R-14"], gaps: ["G-07"] },
+
+  /* ---- Core ISMS records in this repo ---- */
+  { id: "DOC-08", name: "Company Profile (context of the organisation)", type: "Record",
+    purpose: "Describes the business, its services, sites and regulatory context, which is the starting point for the ISMS.",
+    owner: "CISO", approver: "CEO", version: "0.1", status: "Draft",
+    lastReviewed: "2026-09-21", reviewMonths: 12, reviewNote: "Annually, and on any significant change to services, sites, clients or regulation",
+    path: "00-scope-context/01-company-profile.md",
+    clauses: "Clause 4.1", controls: [], risks: ["R-15", "R-16"], gaps: ["G-09"] },
+  { id: "DOC-09", name: "Interested Parties", type: "Record",
+    purpose: "Lists the clients, regulators and others with a stake in Meridiaan's security, and what each one requires.",
+    owner: "CISO", approver: "CEO", version: "0.1", status: "Draft",
+    lastReviewed: "2026-09-30", reviewMonths: 12, reviewNote: "Annually, and on any significant change to clients, suppliers, contracts or regulation",
+    path: "00-scope-context/02-interested-parties.md",
+    clauses: "Clause 4.2", controls: ["A.5.31"], risks: ["R-12", "R-15"], gaps: ["G-09"] },
+  { id: "DOC-10", name: "ISMS Scope Statement", type: "Record",
+    purpose: "Defines exactly which services, sites and systems the ISMS, and any future certificate, covers.",
+    owner: "CISO", approver: "CEO", version: "0.1", status: "Draft",
+    lastReviewed: "2026-09-30", reviewMonths: 12, reviewNote: "Annually, and on any significant change to services, sites, clients or regulation",
+    path: "00-scope-context/03-scope-statement.md",
+    clauses: "Clause 4.3", controls: [], risks: [], risksNote: "Underpins all", gaps: ["G-09"] },
+  { id: "DOC-11", name: "Risk Register", type: "Register",
+    purpose: "Every identified security risk, how serious it is, who owns it and how it is being treated.",
+    owner: "CISO", approver: "CEO", version: "0.1", status: "Draft",
+    lastReviewed: "2026-09-30", reviewMonths: 12, reviewNote: "At least annually, and after any major incident or significant change",
+    path: "01-risk-register/01-risk-register.md", module: "risks",
+    clauses: "Clauses 6.1.2 and 8.2", controls: [], risks: [], risksNote: "Holds every risk", gaps: [], gapsNote: "Sets the priority of every gap" },
+  { id: "DOC-12", name: "Statement of Applicability", type: "Record",
+    purpose: "States which of the 93 ISO 27001 controls apply, why, and how far each is implemented. Auditors start here.",
+    owner: "CISO", approver: "CEO", version: "0.1", status: "Draft",
+    lastReviewed: "2026-09-30", reviewMonths: 12, reviewNote: "At least annually, and on any significant change to risks, services or controls",
+    path: "02-iso27001-soa/01-statement-of-applicability.md", module: "controls",
+    clauses: "Clause 6.1.3 d)", controls: [], controlsNote: "All 93 Annex A controls", risks: [], risksNote: "Treats every risk through its controls", gaps: ["G-09"] },
+  { id: "DOC-13", name: "Gap Assessment and Remediation Roadmap", type: "Report",
+    purpose: "Where Meridiaan falls short of the standard, and the prioritised plan to close each gap.",
+    owner: "CISO", approver: "CEO", version: "0.1", status: "Draft",
+    lastReviewed: "2026-09-30", reviewMonths: 3, reviewNote: "Quarterly against the roadmap; fully at each management review",
+    path: "04-gap-assessment/01-gap-assessment.md", module: "gaps",
+    clauses: "Clauses 6.1.3, 9 and 10", controls: [], risks: [], risksNote: "Prioritised by every risk", gaps: [], gapsNote: "Defines all 10 gaps" },
+  { id: "DOC-14", name: "NIS2 and DORA Crosswalk", type: "Record",
+    purpose: "Maps NIS2 and DORA legal requirements to ISO 27001 controls, so one set of controls meets all three.",
+    owner: "Head of Legal & Compliance", approver: "CISO", version: "0.1", status: "Draft",
+    lastReviewed: "2026-09-30", reviewMonths: 12, reviewNote: "Annually, and on any change to the regulations or their national transposition",
+    path: "03-nis2-crosswalk/01-nis2-dora-crosswalk.md",
+    controls: ["A.5.31", "A.5.24", "A.5.19"], risks: ["R-12", "R-15"], gaps: ["G-04", "G-06"] },
+  { id: "DOC-15", name: "Evidence Index", type: "Register",
+    purpose: "Points to the proof that each control actually works: what an auditor or client will ask to see.",
+    owner: "CISO", approver: "", version: "0.1", status: "Draft",
+    lastReviewed: "2026-09-30", reviewMonths: 12, reviewNote: "Continuously as controls mature; formally at each management review",
+    path: "06-evidence/01-evidence-index.md",
+    clauses: "Clause 9", controls: ["A.5.28", "A.5.36"], risks: [], risksNote: "Shows treatment is working", gaps: ["G-08", "G-09"] },
+  { id: "DOC-16", name: "Executive Summary", type: "Report",
+    purpose: "A plain-language briefing for the board on security posture, regulatory exposure and the roadmap.",
+    owner: "CISO", approver: "", version: "0.1", status: "Draft",
+    lastReviewed: "2026-09-30", reviewMonths: 12, reviewNote: "Not stated in the source; set to annual with the management review",
+    path: "07-exec-summary/01-executive-summary.md",
+    clauses: "Clause 5.1", controls: [], risks: [], risksNote: "Summarises all", gaps: ["G-09"] },
+
+  /* ---- Records a real ISMS keeps outside this repo (illustrative) ---- */
+  { id: "DOC-17", name: "Incident Register", type: "Register",
+    purpose: "Log of every security incident, how it was handled and any regulator notification: the trail regulators expect.",
+    owner: "CISO", approver: "Head of Legal & Compliance", version: "1.2", status: "Approved",
+    lastReviewed: "2026-10-20", reviewMonths: 3, reviewNote: "Quarterly, and after any significant incident",
+    path: "", module: "incidents",
+    controls: ["A.5.24", "A.5.25", "A.5.26", "A.5.27", "A.5.28", "A.6.8"], risks: ["R-12", "R-06", "R-14"], gaps: ["G-04"] },
+  { id: "DOC-18", name: "Supplier Register", type: "Register",
+    purpose: "Inventory of suppliers and sub-processors with their criticality, assessment status and security terms.",
+    owner: "Head of Legal & Compliance", approver: "CISO", version: "1.0", status: "Approved",
+    lastReviewed: "2026-02-10", reviewMonths: 6, reviewNote: "Six-monthly, and on any supplier incident",
+    path: "",
+    controls: ["A.5.19", "A.5.20", "A.5.22", "A.5.23"], risks: ["R-11", "R-03"], gaps: ["G-06"] },
+  { id: "DOC-19", name: "Security Training Records", type: "Record",
+    purpose: "Who has completed security awareness and phishing training, and when.",
+    owner: "CISO", approver: "CEO", version: "1.0", status: "Approved",
+    lastReviewed: "2026-04-30", reviewMonths: 12, reviewNote: "Annually, after each training cycle",
+    path: "",
+    controls: ["A.6.3"], risks: ["R-07", "R-10"], gaps: ["G-03"] },
+  { id: "DOC-20", name: "Internal Audit Report", type: "Report",
+    purpose: "An independent check that the ISMS works as documented. Required before certification.",
+    owner: "CISO", approver: "CEO", version: "", status: "Not started",
+    lastReviewed: "", firstDue: "2027-06-30", reviewMonths: 12, reviewNote: "Annual audit programme; first audit in roadmap phase 3",
+    path: "",
+    clauses: "Clause 9.2", controls: ["A.5.35", "A.5.36"], risks: [], risksNote: "Underpins all", gaps: ["G-09"] },
+  { id: "DOC-21", name: "Management Review Minutes", type: "Record",
+    purpose: "Record of top management reviewing the ISMS and deciding on resources and changes.",
+    owner: "CISO", approver: "CEO", version: "", status: "Not started",
+    lastReviewed: "", firstDue: "2027-09-30", reviewMonths: 12, reviewNote: "At least annually; first review in roadmap phase 3",
+    path: "",
+    clauses: "Clause 9.3", controls: ["A.5.1"], risks: [], risksNote: "Underpins all", gaps: ["G-09"] }
+];
+
+/*
+ * Incidents module.
+ *
+ * Services and financial clients come from 00-scope-context/01-company-
+ * profile.md. NIS2 deadlines come from 05-policies/02-incident-response-
+ * policy.md section 6. That file ends partway through its deadline table,
+ * so the GDPR and client rows below follow GDPR Art. 33 and the DORA
+ * position in the company profile and crosswalk.
+ *
+ * Clock fields: `trigger` is the incident answer that switches the clock
+ * on; `hours`/`months` is the deadline, counted `from` awareness or from
+ * when the NIS2 notification was sent; `dueSoonHours` is when the clock
+ * turns amber.
+ */
+const INCIDENT_SERVICES = [
+  "Private-cloud hosting",
+  "Managed infrastructure and workplace",
+  "Managed network and security",
+  "Backup and disaster recovery",
+  "Service desk and 24/7 monitoring"
+];
+const FINANCIAL_CLIENTS = ["Client A (retail bank)", "Client B (insurer)"];
+const INCIDENT_SEVERITIES = ["Low", "Medium", "High", "Critical"];
+const INCIDENT_STATUSES = ["Open", "Contained", "Closed"];
+
+// "Without undue delay" has no fixed statutory period. This internal target
+// makes it measurable; each financial client's contract may set its own.
+const CLIENT_NOTIFY_TARGET_HOURS = 4;
+
+const REPORTING_OBLIGATIONS = [
+  { key: "nis2-early", title: "NIS2 early warning", authority: "CCB", authorityName: "Centre for Cybersecurity Belgium",
+    basis: "NIS2 Art. 23(4)(a) · Belgian NIS2 Act", trigger: "significant", hours: 24, from: "awareness", dueSoonHours: 6,
+    rule: "Within 24 hours of awareness", owner: "Head of Legal & Compliance",
+    note: "Says whether the incident is suspected to be malicious or could have cross-border impact." },
+  { key: "nis2-notification", title: "NIS2 incident notification", authority: "CCB", authorityName: "Centre for Cybersecurity Belgium",
+    basis: "NIS2 Art. 23(4)(b) · Belgian NIS2 Act", trigger: "significant", hours: 72, from: "awareness", dueSoonHours: 12,
+    rule: "Within 72 hours of awareness", owner: "Head of Legal & Compliance",
+    note: "Updates the early warning with an initial assessment: severity, impact and indicators of compromise." },
+  { key: "nis2-final", title: "NIS2 final report", authority: "CCB", authorityName: "Centre for Cybersecurity Belgium",
+    basis: "NIS2 Art. 23(4)(d) · Belgian NIS2 Act", trigger: "significant", months: 1, from: "nis2-notification", dueSoonHours: 7 * 24,
+    rule: "Within one month of the incident notification", owner: "Head of Legal & Compliance",
+    note: "Full analysis: root cause, threat type, mitigation applied and any cross-border impact." },
+  { key: "gdpr", title: "GDPR breach notification", authority: "GBA/APD", authorityName: "Gegevensbeschermingsautoriteit / Autorité de protection des données",
+    basis: "GDPR Art. 33", trigger: "personalData", hours: 72, from: "awareness", dueSoonHours: 12,
+    rule: "Within 72 hours of awareness", owner: "Data Protection Officer (DPO)",
+    note: "Not needed if the DPO concludes the breach is unlikely to put individuals at risk; record that decision. Meridiaan notifies the GBA for data it controls (staff, client contacts). For client data it processes, it must tell the client (the controller) without undue delay, and the client decides on notifying the GBA." },
+  { key: "client", title: "Financial client notification", authority: "Affected client", authorityName: "Contractual notice to the affected financial client(s)",
+    basis: "Client contract (DORA Art. 30 flow-down)", trigger: "financialClient", hours: CLIENT_NOTIFY_TARGET_HOURS, from: "awareness", dueSoonHours: 1,
+    rule: "Without undue delay (internal target " + CLIENT_NOTIFY_TARGET_HOURS + " hours)", owner: "Head of Legal & Compliance",
+    note: "Gives the client what it needs to classify the incident and report it to its own supervisor: timeline, services and data affected, impact, and actions taken." }
+];
+
+/*
+ * Worked example, so the module is not empty. ILLUSTRATIVE. Its awareness
+ * time is set relative to when the module is first opened in a browser
+ * (`awareMinutesAgo`) so the clocks are live; that moment is then saved
+ * and the clocks keep running from it. "Reset to source data" restarts it.
+ */
+const INCIDENTS = [
+  { id: "INC-EXAMPLE", awareMinutesAgo: 200,
+    title: "Phishing compromise of engineer account used to access a hosted client environment",
+    description: "A cloud engineer entered credentials on a phishing page imitating the identity-provider sign-in and approved an MFA push. " +
+      "The attacker signed in to the private-cloud management console from an unfamiliar IP and exported a VM snapshot from a shared hosting cluster. " +
+      "The snapshot belongs to Client B (insurer) and contains a policyholder database (personal data). " +
+      "Session revoked, credentials reset and console access restricted; investigation ongoing.",
+    severity: "High", significant: true,
+    services: ["Private-cloud hosting", "Backup and disaster recovery"],
+    personalData: true, financialClient: true, clients: ["Client B (insurer)"],
+    status: "Open", risks: ["R-07", "R-03", "R-14"], example: true }
 ];
