@@ -143,6 +143,101 @@
     </form>
   </dialog>
 
+  <!-- Edit control dialog -->
+  <dialog id="control-dialog" class="dialog" aria-labelledby="control-dialog-title">
+    <form id="control-form" method="dialog" novalidate>
+      <header class="dialog-head">
+        <div>
+          <h2 id="control-dialog-title">Edit control</h2>
+          <div class="dialog-sub" id="control-dialog-sub"></div>
+        </div>
+        <button type="button" class="icon-btn" data-close aria-label="Close">×</button>
+      </header>
+
+      <div class="dialog-body">
+        <div class="form-row two">
+          <label class="field">
+            <span>Applicable</span>
+            <select name="applicable">
+              <option value="Yes">Yes — in scope of the ISMS</option>
+              <option value="No">No — excluded</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Implementation status</span>
+            <select name="status"></select>
+          </label>
+        </div>
+
+        <label class="field">
+          <span>Justification</span>
+          <textarea name="justification" rows="3" required></textarea>
+          <small class="err" data-err="justification"></small>
+        </label>
+
+        <div class="ref-block" id="control-gaps"></div>
+      </div>
+
+      <footer class="dialog-foot">
+        <span class="spacer"></span>
+        <button type="button" class="btn" data-close>Cancel</button>
+        <button type="submit" class="btn primary">Save changes</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <!-- Edit gap dialog -->
+  <dialog id="gap-dialog" class="dialog" aria-labelledby="gap-dialog-title">
+    <form id="gap-form" method="dialog" novalidate>
+      <header class="dialog-head">
+        <div>
+          <h2 id="gap-dialog-title">Edit gap</h2>
+          <div class="dialog-sub" id="gap-dialog-sub"></div>
+        </div>
+        <button type="button" class="icon-btn" data-close aria-label="Close">×</button>
+      </header>
+
+      <div class="dialog-body">
+        <div class="readonly">
+          <div class="label">What is missing</div>
+          <p id="gap-missing"></p>
+        </div>
+
+        <div class="form-row two">
+          <label class="field">
+            <span>Status</span>
+            <select name="status"></select>
+          </label>
+          <label class="field">
+            <span>Owner</span>
+            <input name="owner" list="gap-owner-list" required maxlength="80">
+            <datalist id="gap-owner-list"></datalist>
+            <small class="err" data-err="owner"></small>
+          </label>
+        </div>
+
+        <div class="form-row two">
+          <label class="field">
+            <span>Priority</span>
+            <select name="priority"></select>
+          </label>
+          <label class="field">
+            <span>Remediation phase</span>
+            <select name="phase"></select>
+          </label>
+        </div>
+
+        <div class="ref-block" id="gap-refs"></div>
+      </div>
+
+      <footer class="dialog-foot">
+        <span class="spacer"></span>
+        <button type="button" class="btn" data-close>Cancel</button>
+        <button type="submit" class="btn primary">Save changes</button>
+      </footer>
+    </form>
+  </dialog>
+
   <div id="tooltip" class="tooltip" role="tooltip" hidden></div>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
