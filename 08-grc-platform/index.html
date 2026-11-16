@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lattice</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" aria-label="Main navigation">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">L</div>
+        <div>
+          <div class="brand-name">Lattice</div>
+          <div class="brand-sub">GRC Platform — Meridiaan ICT Services BV</div>
+        </div>
+      </div>
+
+      <nav>
+        <div class="nav-section">Overview</div>
+        <a class="nav-item" href="#/dashboard" data-route="dashboard">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 3h6v8H3zM11 3h6v5h-6zM11 10h6v7h-6zM3 13h6v4H3z"/></svg>
+          Dashboard
+        </a>
+
+        <div class="nav-section">Risk &amp; controls</div>
+        <a class="nav-item" href="#/risks" data-route="risks">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2 18 17H2zM10 8v4M10 14.5v.5"/></svg>
+          Risk Register
+        </a>
+        <a class="nav-item" href="#/controls" data-route="controls">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2 17 5v5c0 4-3 7-7 8-4-1-7-4-7-8V5z"/></svg>
+          Control Library
+        </a>
+        <a class="nav-item" href="#/gaps" data-route="gaps">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 10h5M12 10h5M8 6v8M12 6v8"/></svg>
+          Gaps
+        </a>
+
+        <div class="nav-section">Assurance</div>
+        <a class="nav-item" href="#/documents" data-route="documents">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 2h7l4 4v12H5zM12 2v4h4M8 10h5M8 13h5"/></svg>
+          Documents
+        </a>
+        <a class="nav-item" href="#/evidence" data-route="evidence">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4h12v13H4zM7 2v4M13 2v4M7 11l2 2 4-4"/></svg>
+          Evidence
+        </a>
+        <a class="nav-item" href="#/incidents" data-route="incidents">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2v3M10 15v3M2 10h3M15 10h3M10 6a4 4 0 1 1 0 8 4 4 0 0 1 0-8z"/></svg>
+          Incidents
+        </a>
+        <a class="nav-item" href="#/assurance" data-route="assurance">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 17V8l7-5 7 5v9zM8 17v-5h4v5"/></svg>
+          Client Assurance
+        </a>
+      </nav>
+
+      <div class="sidebar-foot">
+        <div>Meridiaan ICT Services BV</div>
+        <div class="muted">Fictional organisation · portfolio project</div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div id="storage-banner" class="banner" hidden></div>
+      <div id="view" tabindex="-1"></div>
+    </main>
+  </div>
+
+  <!-- Add / edit risk dialog -->
+  <dialog id="risk-dialog" class="dialog" aria-labelledby="risk-dialog-title">
+    <form id="risk-form" method="dialog" novalidate>
+      <header class="dialog-head">
+        <h2 id="risk-dialog-title">Add risk</h2>
+        <button type="button" class="icon-btn" data-close aria-label="Close">×</button>
+      </header>
+
+      <div class="dialog-body">
+        <div class="form-row two">
+          <label class="field">
+            <span>Risk ID</span>
+            <input name="id" required pattern="[A-Za-z0-9\-]+" maxlength="12">
+            <small class="err" data-err="id"></small>
+          </label>
+          <label class="field">
+            <span>Short title</span>
+            <input name="title" maxlength="80" placeholder="e.g. Cloud tenant misconfiguration">
+          </label>
+        </div>
+
+        <label class="field">
+          <span>Risk description</span>
+          <textarea name="description" rows="4" required
+            placeholder="Asset → threat → vulnerability → what happens"></textarea>
+          <small class="err" data-err="description"></small>
+        </label>
+
+        <div class="form-row two">
+          <label class="field">
+            <span>Likelihood</span>
+            <select name="likelihood" required></select>
+          </label>
+          <label class="field">
+            <span>Impact</span>
+            <select name="impact" required></select>
+          </label>
+        </div>
+
+        <div class="score-preview" aria-live="polite">
+          <div>
+            <div class="label">Score (L × I)</div>
+            <div class="score-value" id="preview-score">–</div>
+          </div>
+          <div>
+            <div class="label">Band</div>
+            <div id="preview-band">–</div>
+          </div>
+          <div class="score-action" id="preview-action"></div>
+        </div>
+
+        <div class="form-row two">
+          <label class="field">
+            <span>Treatment</span>
+            <select name="treatment" required></select>
+          </label>
+          <label class="field">
+            <span>Owner</span>
+            <input name="owner" list="owner-list" required maxlength="80">
+            <datalist id="owner-list"></datalist>
+            <small class="err" data-err="owner"></small>
+          </label>
+        </div>
+      </div>
+
+      <footer class="dialog-foot">
+        <button type="button" class="btn danger-ghost" id="delete-risk" hidden>Delete risk</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn" data-close>Cancel</button>
+        <button type="submit" class="btn primary" id="save-risk">Save risk</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <div id="tooltip" class="tooltip" role="tooltip" hidden></div>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
